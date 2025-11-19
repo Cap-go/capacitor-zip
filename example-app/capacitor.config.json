@@ -1,0 +1,10 @@
+{
+  "appId": "app.capgo.zip",
+  "appName": "Zip Example",
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false
+    }
+  }
+}
