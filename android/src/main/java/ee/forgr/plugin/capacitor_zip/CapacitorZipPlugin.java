@@ -22,7 +22,7 @@ import net.lingala.zip4j.model.enums.EncryptionMethod;
 @CapacitorPlugin(name = "CapacitorZip")
 public class CapacitorZipPlugin extends Plugin {
 
-    private final String pluginVersion = "8.0.3";
+    private final String pluginVersion = "8.0.4";
 
     @PluginMethod
     public void zip(PluginCall call) {
