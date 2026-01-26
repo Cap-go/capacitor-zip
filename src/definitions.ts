@@ -165,7 +165,7 @@ export interface ZipOptions {
    * This option only applies when the source is a directory. For single files, this option is ignored.
    *
    * @default true
-   * @since 8.1.0
+   * @since 8.0.5
    * @example
    * ```typescript
    * // With includeParentFolder: true (default)

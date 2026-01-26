@@ -54,6 +54,15 @@ public class CapacitorZip: NSObject {
         // Get all items in the source directory
         let contents = try fileManager.contentsOfDirectory(at: sourceURL, includingPropertiesForKeys: nil)
         
+        // Handle empty directory case - create an empty but valid ZIP
+        if contents.isEmpty {
+            // Create an empty archive
+            guard let _ = Archive(url: destinationURL, accessMode: .create) else {
+                throw NSError(domain: "CapacitorZip", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create archive"])
+            }
+            return
+        }
+        
         // Sort for consistent ordering
         let sortedContents = contents.sorted { $0.lastPathComponent < $1.lastPathComponent }
         
@@ -79,12 +88,16 @@ public class CapacitorZip: NSObject {
         let itemName = itemURL.lastPathComponent
         let archivePath = basePath.isEmpty ? itemName : "\(basePath)/\(itemName)"
         
+        // Get actual modification date
+        let attributes = try? fileManager.attributesOfItem(atPath: itemURL.path)
+        let modificationDate = (attributes?[.modificationDate] as? Date) ?? Date()
+        
         if isDirectory.boolValue {
             // Explicitly add directory entry first
             let dirPath = archivePath + "/"
-            try archive.addEntry(with: dirPath, type: .directory, uncompressedSize: 0, modificationDate: Date()) { _, _ in
+            try archive.addEntry(with: dirPath, type: .directory, uncompressedSize: 0, modificationDate: modificationDate, provider: { _, _ in
                 return 0
-            }
+            })
             
             // Add contents recursively with consistent ordering
             let contents = try fileManager.contentsOfDirectory(at: itemURL, includingPropertiesForKeys: nil)
