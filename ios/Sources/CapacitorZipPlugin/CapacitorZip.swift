@@ -7,7 +7,7 @@ public class CapacitorZip: NSObject {
      * Creates a zip archive from a source file or directory
      * Note: Password protection is not supported on iOS with ZIPFoundation
      */
-    public func zip(source: String, destination: String, password: String? = nil) throws {
+    public func zip(source: String, destination: String, password: String? = nil, includeParentFolder: Bool = true) throws {
         let sourceURL = URL(fileURLWithPath: source)
         let destinationURL = URL(fileURLWithPath: destination)
 
@@ -32,8 +32,60 @@ public class CapacitorZip: NSObject {
             try FileManager.default.removeItem(at: destinationURL)
         }
 
-        // Zip the item (file or directory)
-        try FileManager.default.zipItem(at: sourceURL, to: destinationURL)
+        // Check if source is a directory
+        var isDirectory: ObjCBool = false
+        FileManager.default.fileExists(atPath: source, isDirectory: &isDirectory)
+        
+        if isDirectory.boolValue && !includeParentFolder {
+            // Zip only the contents of the directory without the parent folder
+            try zipDirectoryContents(at: sourceURL, to: destinationURL)
+        } else {
+            // Zip the item (file or directory) normally
+            try FileManager.default.zipItem(at: sourceURL, to: destinationURL)
+        }
+    }
+    
+    /**
+     * Zips only the contents of a directory without including the parent folder
+     */
+    private func zipDirectoryContents(at sourceURL: URL, to destinationURL: URL) throws {
+        let fileManager = FileManager.default
+        
+        // Get all items in the source directory
+        let contents = try fileManager.contentsOfDirectory(at: sourceURL, includingPropertiesForKeys: nil)
+        
+        // Create the archive
+        guard let archive = Archive(url: destinationURL, accessMode: .create) else {
+            throw NSError(domain: "CapacitorZip", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create archive"])
+        }
+        
+        // Add each item to the archive
+        for itemURL in contents {
+            try addItemToArchive(itemURL: itemURL, archive: archive, basePath: "")
+        }
+    }
+    
+    /**
+     * Recursively adds an item to the archive
+     */
+    private func addItemToArchive(itemURL: URL, archive: Archive, basePath: String) throws {
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+        fileManager.fileExists(atPath: itemURL.path, isDirectory: &isDirectory)
+        
+        let itemName = itemURL.lastPathComponent
+        let archivePath = basePath.isEmpty ? itemName : "\(basePath)/\(itemName)"
+        
+        if isDirectory.boolValue {
+            // Add directory recursively
+            let contents = try fileManager.contentsOfDirectory(at: itemURL, includingPropertiesForKeys: nil)
+            for subItemURL in contents {
+                try addItemToArchive(itemURL: subItemURL, archive: archive, basePath: archivePath)
+            }
+        } else {
+            // Add file using FileManager extension
+            try archive.addEntry(with: archivePath, relativeTo: itemURL.deletingLastPathComponent())
+        }
     }
 
     /**
