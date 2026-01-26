@@ -77,14 +77,20 @@ public class CapacitorZip: NSObject {
         let archivePath = basePath.isEmpty ? itemName : "\(basePath)/\(itemName)"
         
         if isDirectory.boolValue {
-            // Add directory recursively
+            // Explicitly add directory entry first
+            let dirPath = archivePath + "/"
+            try archive.addEntry(with: dirPath, type: .directory, uncompressedSize: 0, modificationDate: Date()) { _, _ in
+                return 0
+            }
+            
+            // Add contents recursively
             let contents = try fileManager.contentsOfDirectory(at: itemURL, includingPropertiesForKeys: nil)
             for subItemURL in contents {
                 try addItemToArchive(itemURL: subItemURL, archive: archive, basePath: archivePath)
             }
         } else {
-            // Add file using FileManager extension
-            try archive.addEntry(with: archivePath, relativeTo: itemURL.deletingLastPathComponent())
+            // Add file using the correct API
+            try archive.addEntry(with: archivePath, fileURL: itemURL)
         }
     }
 
