@@ -187,6 +187,7 @@ public class CapacitorZipPlugin extends Plugin {
         File[] files = directory.listFiles();
         if (files == null) return;
 
+        Arrays.sort(files);
         for (File file : files) {
             if (file.isDirectory()) {
                 zipDirectory(file, parentPath + "/" + file.getName(), zos);
