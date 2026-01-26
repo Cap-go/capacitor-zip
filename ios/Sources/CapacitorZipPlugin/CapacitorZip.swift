@@ -56,8 +56,9 @@ public class CapacitorZip: NSObject {
         
         // Handle empty directory case - create an empty but valid ZIP
         if contents.isEmpty {
-            // Create an empty archive
-            guard let _ = Archive(url: destinationURL, accessMode: .create) else {
+            // Create an empty archive and let it close properly
+            let archive = Archive(url: destinationURL, accessMode: .create)
+            if archive == nil {
                 throw NSError(domain: "CapacitorZip", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create archive"])
             }
             return
