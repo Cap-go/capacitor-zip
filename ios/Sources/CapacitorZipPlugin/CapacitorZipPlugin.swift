@@ -30,9 +30,10 @@ public class CapacitorZipPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         let password = call.getString("password")
+        let includeParentFolder = call.getBool("includeParentFolder") ?? true
 
         do {
-            try implementation.zip(source: source, destination: destination, password: password)
+            try implementation.zip(source: source, destination: destination, password: password, includeParentFolder: includeParentFolder)
             call.resolve()
         } catch {
             call.reject("Failed to create zip archive: \(error.localizedDescription)")

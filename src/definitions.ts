@@ -155,6 +155,41 @@ export interface ZipOptions {
    * @example 'mySecurePassword123'
    */
   password?: string;
+
+  /**
+   * Whether to include the parent folder in the ZIP archive.
+   *
+   * When true (default), the source folder itself becomes the root directory in the archive.
+   * When false, only the contents of the source folder are included at the root level.
+   *
+   * This option only applies when the source is a directory. For single files, this option is ignored.
+   *
+   * @default true
+   * @since 8.0.5
+   * @example
+   * ```typescript
+   * // With includeParentFolder: true (default)
+   * // Source: /cache/temp/ containing [database.backup, media/]
+   * // ZIP contains: temp/database.backup, temp/media/
+   * await CapacitorZip.zip({
+   *   source: '/cache/temp',
+   *   destination: '/cache/backup.zip',
+   *   includeParentFolder: true
+   * });
+   * ```
+   * @example
+   * ```typescript
+   * // With includeParentFolder: false
+   * // Source: /cache/temp/ containing [database.backup, media/]
+   * // ZIP contains: database.backup, media/
+   * await CapacitorZip.zip({
+   *   source: '/cache/temp',
+   *   destination: '/cache/backup.zip',
+   *   includeParentFolder: false
+   * });
+   * ```
+   */
+  includeParentFolder?: boolean;
 }
 
 /**

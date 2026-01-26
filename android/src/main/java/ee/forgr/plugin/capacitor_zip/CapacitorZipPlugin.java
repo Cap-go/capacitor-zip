@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -29,6 +30,7 @@ public class CapacitorZipPlugin extends Plugin {
         String source = call.getString("source");
         String destination = call.getString("destination");
         String password = call.getString("password");
+        Boolean includeParentFolder = call.getBoolean("includeParentFolder", true);
 
         if (source == null || source.isEmpty()) {
             call.reject("Source path is required");
@@ -55,10 +57,10 @@ public class CapacitorZipPlugin extends Plugin {
 
             if (password != null && !password.isEmpty()) {
                 // Use zip4j for password-protected archives
-                zipWithPassword(sourceFile, destinationFile, password);
+                zipWithPassword(sourceFile, destinationFile, password, includeParentFolder);
             } else {
                 // Use standard Java zip for non-encrypted archives
-                zipWithoutPassword(sourceFile, destinationFile);
+                zipWithoutPassword(sourceFile, destinationFile, includeParentFolder);
             }
 
             call.resolve();
@@ -120,7 +122,7 @@ public class CapacitorZipPlugin extends Plugin {
         }
     }
 
-    private void zipWithPassword(File source, File destination, String password) throws Exception {
+    private void zipWithPassword(File source, File destination, String password, boolean includeParentFolder) throws Exception {
         ZipFile zipFile = new ZipFile(destination);
 
         ZipParameters zipParameters = new ZipParameters();
@@ -131,20 +133,50 @@ public class CapacitorZipPlugin extends Plugin {
         zipFile.setPassword(password.toCharArray());
 
         if (source.isDirectory()) {
-            zipFile.addFolder(source, zipParameters);
+            if (includeParentFolder) {
+                zipFile.addFolder(source, zipParameters);
+            } else {
+                // Add contents of the folder without the parent folder
+                File[] files = source.listFiles();
+                if (files != null) {
+                    Arrays.sort(files);
+                    for (File file : files) {
+                        if (file.isDirectory()) {
+                            zipFile.addFolder(file, zipParameters);
+                        } else {
+                            zipFile.addFile(file, zipParameters);
+                        }
+                    }
+                }
+            }
         } else {
             zipFile.addFile(source, zipParameters);
         }
     }
 
-    private void zipWithoutPassword(File source, File destination) throws IOException {
+    private void zipWithoutPassword(File source, File destination, boolean includeParentFolder) throws IOException {
         try (
             FileOutputStream fos = new FileOutputStream(destination);
             BufferedOutputStream bos = new BufferedOutputStream(fos);
             ZipOutputStream zos = new ZipOutputStream(bos)
         ) {
             if (source.isDirectory()) {
-                zipDirectory(source, source.getName(), zos);
+                if (includeParentFolder) {
+                    zipDirectory(source, source.getName(), zos);
+                } else {
+                    // Add contents of the folder without the parent folder
+                    File[] files = source.listFiles();
+                    if (files != null) {
+                        Arrays.sort(files);
+                        for (File file : files) {
+                            if (file.isDirectory()) {
+                                zipDirectory(file, file.getName(), zos);
+                            } else {
+                                zipFile(file, file.getName(), zos);
+                            }
+                        }
+                    }
+                }
             } else {
                 zipFile(source, source.getName(), zos);
             }
@@ -155,6 +187,7 @@ public class CapacitorZipPlugin extends Plugin {
         File[] files = directory.listFiles();
         if (files == null) return;
 
+        Arrays.sort(files);
         for (File file : files) {
             if (file.isDirectory()) {
                 zipDirectory(file, parentPath + "/" + file.getName(), zos);
