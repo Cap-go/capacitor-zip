@@ -54,13 +54,16 @@ public class CapacitorZip: NSObject {
         // Get all items in the source directory
         let contents = try fileManager.contentsOfDirectory(at: sourceURL, includingPropertiesForKeys: nil)
         
+        // Sort for consistent ordering
+        let sortedContents = contents.sorted { $0.lastPathComponent < $1.lastPathComponent }
+        
         // Create the archive
         guard let archive = Archive(url: destinationURL, accessMode: .create) else {
             throw NSError(domain: "CapacitorZip", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create archive"])
         }
         
         // Add each item to the archive
-        for itemURL in contents {
+        for itemURL in sortedContents {
             try addItemToArchive(itemURL: itemURL, archive: archive, basePath: "")
         }
     }
@@ -83,9 +86,10 @@ public class CapacitorZip: NSObject {
                 return 0
             }
             
-            // Add contents recursively
+            // Add contents recursively with consistent ordering
             let contents = try fileManager.contentsOfDirectory(at: itemURL, includingPropertiesForKeys: nil)
-            for subItemURL in contents {
+            let sortedContents = contents.sorted { $0.lastPathComponent < $1.lastPathComponent }
+            for subItemURL in sortedContents {
                 try addItemToArchive(itemURL: subItemURL, archive: archive, basePath: archivePath)
             }
         } else {
