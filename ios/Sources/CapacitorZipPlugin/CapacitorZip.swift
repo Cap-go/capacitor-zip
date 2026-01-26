@@ -91,7 +91,7 @@ public class CapacitorZip: NSObject {
         if isDirectory.boolValue {
             // Explicitly add directory entry first
             let dirPath = archivePath + "/"
-            try archive.addEntry(with: dirPath, type: .directory, uncompressedSize: 0, modificationDate: modificationDate, provider: { position, size in
+            try archive.addEntry(with: dirPath, type: .directory, uncompressedSize: Int64(0), modificationDate: modificationDate, provider: { position, size in
                 return Data()
             })
             
