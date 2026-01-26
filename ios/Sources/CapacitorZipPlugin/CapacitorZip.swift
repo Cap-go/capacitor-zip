@@ -56,21 +56,16 @@ public class CapacitorZip: NSObject {
         
         // Handle empty directory case - create an empty but valid ZIP
         if contents.isEmpty {
-            // Create an empty archive and let it close properly
-            let archive = Archive(url: destinationURL, accessMode: .create)
-            if archive == nil {
-                throw NSError(domain: "CapacitorZip", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create archive"])
-            }
+            // Create an empty archive using the throwing initializer
+            _ = try Archive(url: destinationURL, accessMode: .create)
             return
         }
         
         // Sort for consistent ordering
         let sortedContents = contents.sorted { $0.lastPathComponent < $1.lastPathComponent }
         
-        // Create the archive
-        guard let archive = Archive(url: destinationURL, accessMode: .create) else {
-            throw NSError(domain: "CapacitorZip", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create archive"])
-        }
+        // Create the archive using the throwing initializer
+        let archive = try Archive(url: destinationURL, accessMode: .create)
         
         // Add each item to the archive
         for itemURL in sortedContents {
@@ -96,8 +91,8 @@ public class CapacitorZip: NSObject {
         if isDirectory.boolValue {
             // Explicitly add directory entry first
             let dirPath = archivePath + "/"
-            try archive.addEntry(with: dirPath, type: .directory, uncompressedSize: 0, modificationDate: modificationDate, provider: { _, _ in
-                return 0
+            try archive.addEntry(with: dirPath, type: .directory, uncompressedSize: 0, modificationDate: modificationDate, provider: { position, size in
+                return Data()
             })
             
             // Add contents recursively with consistent ordering
