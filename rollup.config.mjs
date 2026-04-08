@@ -7,7 +7,7 @@ export default {
       name: 'capacitorCapacitorZip',
       globals: {
         '@capacitor/core': 'capacitorExports',
-        jszip: 'JSZip',
+        '@zip.js/zip.js': 'zip',
       },
       sourcemap: true,
       inlineDynamicImports: true,
@@ -19,5 +19,5 @@ export default {
       inlineDynamicImports: true,
     },
   ],
-  external: ['@capacitor/core', 'jszip'],
+  external: ['@capacitor/core', '@zip.js/zip.js'],
 };

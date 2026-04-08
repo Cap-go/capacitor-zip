@@ -4,7 +4,7 @@
  * Provides native ZIP file operations with platform-specific implementations:
  * - iOS: Uses ZIPFoundation (password protection not supported)
  * - Android: Uses zip4j with AES encryption support
- * - Web: Uses JSZip (unzip only, triggers downloads)
+ * - Web: Uses zip.js (unzip only, triggers downloads)
  *
  * @since 7.0.0
  */

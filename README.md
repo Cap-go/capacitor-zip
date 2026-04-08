@@ -61,7 +61,7 @@ Capacitor Zip Plugin for compressing and extracting zip archives.
 Provides native ZIP file operations with platform-specific implementations:
 - iOS: Uses ZIPFoundation (password protection not supported)
 - Android: Uses zip4j with AES encryption support
-- Web: Uses JSZip (unzip only, triggers downloads)
+- Web: Uses zip.js (unzip only, triggers downloads)
 
 ### zip(...)
 
@@ -306,7 +306,7 @@ try {
 - [zip4j](https://github.com/srikanth-lingala/zip4j) - Provides password-protected ZIP support
 
 ### Web
-- [JSZip](https://stuk.github.io/jszip/) - JavaScript ZIP library (limited functionality)
+- [zip.js](https://gildas-lormeau.github.io/zip.js/) - JavaScript ZIP library (limited functionality)
 
 ## License
 
