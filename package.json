@@ -76,7 +76,7 @@
     "@capacitor/core": ">=8.0.0"
   },
   "dependencies": {
-    "jszip": "^3.10.1"
+    "@zip.js/zip.js": "^2.8.26"
   },
   "prettier": "@ionic/prettier-config",
   "swiftlint": "@ionic/swiftlint-config",

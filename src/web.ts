@@ -1,5 +1,6 @@
 import { WebPlugin } from '@capacitor/core';
-import JSZip from 'jszip';
+import { BlobReader, BlobWriter, ZipReader } from '@zip.js/zip.js';
+import type { Entry } from '@zip.js/zip.js';
 
 import type { CapacitorZipPlugin, UnzipOptions, ZipOptions } from './definitions';
 
@@ -11,39 +12,41 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
   }
 
   async unzip(options: UnzipOptions): Promise<void> {
+    let zipReader: ZipReader<unknown> | undefined;
+
     try {
-      // Fetch the zip file
       const response = await fetch(options.source);
-      const arrayBuffer = await response.arrayBuffer();
+      const blob = await response.blob();
 
-      // Load zip with password if provided
-      const zip = await JSZip.loadAsync(arrayBuffer, {
-        decodeFileName: (bytes) => {
-          return new TextDecoder('utf-8').decode(bytes as Uint8Array);
-        },
-      });
+      zipReader = new ZipReader(new BlobReader(blob));
+      const entries = await zipReader.getEntries();
 
-      // Extract all files by triggering downloads
-      const promises = Object.keys(zip.files).map(async (filename) => {
-        const file = zip.files[filename];
-        if (!file.dir) {
-          const blob = await file.async('blob');
-          const url = URL.createObjectURL(blob);
-
-          // Create download for each file
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+      const downloads = entries.map(async (entry: Entry) => {
+        if (entry.directory) {
+          return;
         }
+
+        const blob = await entry.getData(new BlobWriter(), {
+          password: options.password,
+        });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = entry.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       });
 
-      await Promise.all(promises);
+      await Promise.all(downloads);
     } catch (error) {
       throw new Error(`Failed to unzip: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      if (zipReader) {
+        await zipReader.close();
+      }
     }
   }
 
