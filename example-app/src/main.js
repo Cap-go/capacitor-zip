@@ -7,60 +7,96 @@ import { CapacitorZip } from '@capgo/capacitor-zip';
 const plugin = CapacitorZip;
 const state = {};
 
-
 const actions = [
-{
-              id: 'get-plugin-version',
-              label: 'Get plugin version',
-              description: 'Calls getPluginVersion() to get the native plugin version.',
-              inputs: [],
-              run: async (values) => {
-                const result = await plugin.getPluginVersion();
-return result;
-              },
-            },
-{
-              id: 'zip-directory',
-              label: 'Zip a directory',
-              description: 'Creates a ZIP archive from a source directory. Note: Use absolute paths for mobile platforms.',
-              inputs: [
-                { name: 'source', label: 'Source path', type: 'text', value: '/path/to/source-folder', placeholder: '/path/to/source-folder' },
-                { name: 'destination', label: 'Destination ZIP path', type: 'text', value: '/path/to/output.zip', placeholder: '/path/to/output.zip' },
-                { name: 'password', label: 'Password (optional, Android only)', type: 'text', value: '', placeholder: 'Leave empty for no encryption' }
-              ],
-              run: async (values) => {
-                const options = {
-                  source: values.source,
-                  destination: values.destination,
-                };
-                if (values.password) {
-                  options.password = values.password;
-                }
-                await plugin.zip(options);
-return { success: true, message: `Successfully created ${values.destination}` };
-              },
-            },
-{
-              id: 'unzip-archive',
-              label: 'Unzip an archive',
-              description: 'Extracts a ZIP archive to a destination directory.',
-              inputs: [
-                { name: 'source', label: 'Source ZIP path', type: 'text', value: '/path/to/archive.zip', placeholder: '/path/to/archive.zip' },
-                { name: 'destination', label: 'Destination folder path', type: 'text', value: '/path/to/extract-folder', placeholder: '/path/to/extract-folder' },
-                { name: 'password', label: 'Password (if encrypted)', type: 'text', value: '', placeholder: 'Leave empty if not encrypted' }
-              ],
-              run: async (values) => {
-                const options = {
-                  source: values.source,
-                  destination: values.destination,
-                };
-                if (values.password) {
-                  options.password = values.password;
-                }
-                await plugin.unzip(options);
-return { success: true, message: `Successfully extracted to ${values.destination}` };
-              },
-            }
+  {
+    id: 'get-plugin-version',
+    label: 'Get plugin version',
+    description: 'Calls getPluginVersion() to get the native plugin version.',
+    inputs: [],
+    run: async (values) => {
+      const result = await plugin.getPluginVersion();
+      return result;
+    },
+  },
+  {
+    id: 'zip-directory',
+    label: 'Zip a directory',
+    description:
+      'Creates a ZIP archive from a source directory. Note: Use absolute paths for mobile platforms.',
+    inputs: [
+      {
+        name: 'source',
+        label: 'Source path',
+        type: 'text',
+        value: '/path/to/source-folder',
+        placeholder: '/path/to/source-folder',
+      },
+      {
+        name: 'destination',
+        label: 'Destination ZIP path',
+        type: 'text',
+        value: '/path/to/output.zip',
+        placeholder: '/path/to/output.zip',
+      },
+      {
+        name: 'password',
+        label: 'Password (optional, Android only)',
+        type: 'text',
+        value: '',
+        placeholder: 'Leave empty for no encryption',
+      },
+    ],
+    run: async (values) => {
+      const options = {
+        source: values.source,
+        destination: values.destination,
+      };
+      if (values.password) {
+        options.password = values.password;
+      }
+      await plugin.zip(options);
+      return { success: true, message: `Successfully created ${values.destination}` };
+    },
+  },
+  {
+    id: 'unzip-archive',
+    label: 'Unzip an archive',
+    description: 'Extracts a ZIP archive to a destination directory.',
+    inputs: [
+      {
+        name: 'source',
+        label: 'Source ZIP path',
+        type: 'text',
+        value: '/path/to/archive.zip',
+        placeholder: '/path/to/archive.zip',
+      },
+      {
+        name: 'destination',
+        label: 'Destination folder path',
+        type: 'text',
+        value: '/path/to/extract-folder',
+        placeholder: '/path/to/extract-folder',
+      },
+      {
+        name: 'password',
+        label: 'Password (if encrypted)',
+        type: 'text',
+        value: '',
+        placeholder: 'Leave empty if not encrypted',
+      },
+    ],
+    run: async (values) => {
+      const options = {
+        source: values.source,
+        destination: values.destination,
+      };
+      if (values.password) {
+        options.password = values.password;
+      }
+      await plugin.unzip(options);
+      return { success: true, message: `Successfully extracted to ${values.destination}` };
+    },
+  },
 ];
 
 const actionSelect = document.getElementById('action-select');
