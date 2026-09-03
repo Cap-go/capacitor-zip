@@ -58,6 +58,25 @@ public class CapacitorZipPluginTest {
     }
 
     @Test
+    public void unzipWithPassword_rejectsCorruptFile() throws Exception {
+        File fakeZip = tempFolder.newFile("corrupt.zip");
+        Files.write(fakeZip.toPath(), "not a zip file".getBytes(StandardCharsets.UTF_8));
+        File destDir = tempFolder.newFolder("dest");
+
+        CapacitorZipPlugin plugin = new CapacitorZipPlugin();
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithPassword", File.class, File.class, String.class);
+        unzip.setAccessible(true);
+
+        try {
+            unzip.invoke(plugin, fakeZip, destDir, "password");
+            fail("Expected IOException for corrupt zip");
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof IOException);
+            assertEquals("Invalid or corrupt zip file", e.getCause().getMessage());
+        }
+    }
+
+    @Test
     public void unzipWithoutPassword_extractsValidZip() throws Exception {
         File zipFile = createZipWithEntry("hello.txt", "hello");
         File destDir = tempFolder.newFolder("dest");
