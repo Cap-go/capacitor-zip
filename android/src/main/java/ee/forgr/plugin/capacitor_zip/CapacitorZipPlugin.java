@@ -221,12 +221,15 @@ public class CapacitorZipPlugin extends Plugin {
     }
 
     private void unzipWithPassword(File source, File destination, String password) throws Exception {
-        validateZipArchive(source);
-        ZipFile zipFile = new ZipFile(source);
-        if (zipFile.isEncrypted()) {
-            zipFile.setPassword(password.toCharArray());
+        try (ZipFile zipFile = new ZipFile(source)) {
+            if (!zipFile.isValidZipFile()) {
+                throw new IOException("Invalid or corrupt zip file");
+            }
+            if (zipFile.isEncrypted()) {
+                zipFile.setPassword(password.toCharArray());
+            }
+            zipFile.extractAll(destination.getAbsolutePath());
         }
-        zipFile.extractAll(destination.getAbsolutePath());
     }
 
     private void unzipWithoutPassword(File source, File destination) throws IOException {

@@ -13,6 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import net.lingala.zip4j.ZipFile;
+import net.lingala.zip4j.model.ZipParameters;
+import net.lingala.zip4j.model.enums.EncryptionMethod;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -36,6 +39,11 @@ public class CapacitorZipPluginTest {
         File emptyZip = createEmptyZip();
 
         CapacitorZipPlugin.validateZipArchive(emptyZip);
+
+        CapacitorZipPlugin plugin = new CapacitorZipPlugin();
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithoutPassword", File.class, File.class);
+        unzip.setAccessible(true);
+        unzip.invoke(plugin, emptyZip, tempFolder.newFolder("empty-dest"));
     }
 
     @Test
@@ -91,6 +99,21 @@ public class CapacitorZipPluginTest {
         assertEquals("hello", new String(Files.readAllBytes(extracted.toPath()), StandardCharsets.UTF_8));
     }
 
+    @Test
+    public void unzipWithPassword_extractsValidZip() throws Exception {
+        File zipFile = createPasswordProtectedZip("hello.txt", "hello", "secret");
+        File destDir = tempFolder.newFolder("dest");
+
+        CapacitorZipPlugin plugin = new CapacitorZipPlugin();
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithPassword", File.class, File.class, String.class);
+        unzip.setAccessible(true);
+        unzip.invoke(plugin, zipFile, destDir, "secret");
+
+        File extracted = new File(destDir, "hello.txt");
+        assertTrue(extracted.exists());
+        assertEquals("hello", new String(Files.readAllBytes(extracted.toPath()), StandardCharsets.UTF_8));
+    }
+
     private File createEmptyZip() throws IOException {
         File zip = tempFolder.newFile("empty.zip");
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip))) {
@@ -107,6 +130,23 @@ public class CapacitorZipPluginTest {
             zos.write(content.getBytes(StandardCharsets.UTF_8));
             zos.closeEntry();
         }
+        return zip;
+    }
+
+    private File createPasswordProtectedZip(String name, String content, String password) throws Exception {
+        File entryFile = tempFolder.newFile(name);
+        Files.write(entryFile.toPath(), content.getBytes(StandardCharsets.UTF_8));
+
+        File zip = tempFolder.newFile("encrypted.zip");
+        ZipParameters zipParameters = new ZipParameters();
+        zipParameters.setEncryptFiles(true);
+        zipParameters.setEncryptionMethod(EncryptionMethod.AES);
+
+        try (ZipFile zipFile = new ZipFile(zip)) {
+            zipFile.setPassword(password.toCharArray());
+            zipFile.addFile(entryFile, zipParameters);
+        }
+
         return zip;
     }
 }
