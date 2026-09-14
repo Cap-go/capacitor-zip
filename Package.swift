@@ -18,6 +18,7 @@ let package = Package(
             name: "CapacitorZipPlugin",
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
+                .product(name: "Cordova", package: "capacitor-swift-pm"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation")
             ],
             path: "ios/Sources/CapacitorZipPlugin"),
