@@ -130,7 +130,6 @@ public class CapacitorZip: NSObject {
             try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true, attributes: nil)
         }
 
-        // Unzip the item
-        try FileManager.default.unzipItem(at: sourceURL, to: destinationURL)
+        try CapacitorZipUnzip.unzipItem(at: sourceURL, to: destinationURL)
     }
 }
