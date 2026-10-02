@@ -1,6 +1,8 @@
 package ee.forgr.plugin.capacitor_zip;
 
-import android.net.Uri;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 final class CapacitorZipPath {
 
@@ -16,14 +18,20 @@ final class CapacitorZipPath {
         }
         String trimmed = path.trim();
         if (trimmed.length() >= 5 && trimmed.regionMatches(true, 0, "file:", 0, 5)) {
-            Uri uri = Uri.parse(trimmed);
-            String uriPath = uri.getPath();
-            if (uriPath != null && !uriPath.isEmpty()) {
-                return Uri.decode(uriPath);
+            try {
+                URI uri = new URI(trimmed);
+                if ("file".equalsIgnoreCase(uri.getScheme())) {
+                    String uriPath = uri.getPath();
+                    if (uriPath != null && !uriPath.isEmpty()) {
+                        return URLDecoder.decode(uriPath, StandardCharsets.UTF_8);
+                    }
+                }
+            } catch (Exception ignored) {
+                // fall through to return trimmed path below
             }
         }
         if (trimmed.contains("%")) {
-            return Uri.decode(trimmed);
+            return URLDecoder.decode(trimmed, StandardCharsets.UTF_8);
         }
         return trimmed;
     }
