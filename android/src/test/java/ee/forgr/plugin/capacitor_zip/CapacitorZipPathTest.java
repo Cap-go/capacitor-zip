@@ -46,4 +46,20 @@ public class CapacitorZipPathTest {
     public void resolveFilesystemPath_leavesLiteralPercentInPlainPath() {
         assertEquals("/sdcard/100%/a.zip", CapacitorZipPath.resolveFilesystemPath("/sdcard/100%/a.zip"));
     }
+
+    @Test
+    public void resolveFilesystemPath_decodesUtf8PercentSequences() {
+        assertEquals("/tmp/Música/file.zip", CapacitorZipPath.resolveFilesystemPath("/tmp/M%C3%BAsica/file.zip"));
+    }
+
+    @Test
+    public void resolveFilesystemPath_leavesContentUriPercentEncodingUnchanged() {
+        String contentUri = "content://com.example.provider/document/100%2Ffile";
+        assertEquals(contentUri, CapacitorZipPath.resolveFilesystemPath(contentUri));
+    }
+
+    @Test
+    public void resolveFilesystemPath_stripsFileSchemeWhenUriParseFails() {
+        assertEquals("/tmp/my folder/file.zip", CapacitorZipPath.resolveFilesystemPath("file:///tmp/my folder/file.zip"));
+    }
 }

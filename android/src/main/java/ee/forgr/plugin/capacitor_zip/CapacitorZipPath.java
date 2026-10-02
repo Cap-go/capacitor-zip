@@ -1,6 +1,8 @@
 package ee.forgr.plugin.capacitor_zip;
 
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 
 final class CapacitorZipPath {
 
@@ -14,10 +16,9 @@ final class CapacitorZipPath {
         if (path == null) {
             return null;
         }
-        String trimmed = path.trim();
-        if (trimmed.length() >= 5 && trimmed.regionMatches(true, 0, "file:", 0, 5)) {
+        if (path.length() >= 5 && path.regionMatches(true, 0, "file:", 0, 5)) {
             try {
-                URI uri = new URI(trimmed);
+                URI uri = new URI(path);
                 if ("file".equalsIgnoreCase(uri.getScheme())) {
                     String uriPath = uri.getPath();
                     if (uriPath != null && !uriPath.isEmpty()) {
@@ -25,31 +26,53 @@ final class CapacitorZipPath {
                     }
                 }
             } catch (Exception ignored) {
-                // fall through to return trimmed path below
+                return stripFileScheme(path);
             }
+            return stripFileScheme(path);
         }
-        if (trimmed.contains("%")) {
-            return decodePercentEncoded(trimmed);
+        if (!path.regionMatches(true, 0, "content:", 0, 8) && path.contains("%")) {
+            return decodePercentEncoded(path);
         }
-        return trimmed;
+        return path;
+    }
+
+    static String stripFileScheme(String path) {
+        String withoutScheme = path;
+        if (withoutScheme.regionMatches(true, 0, "file://", 0, 7)) {
+            withoutScheme = withoutScheme.substring(7);
+        } else if (withoutScheme.regionMatches(true, 0, "file:", 0, 5)) {
+            withoutScheme = withoutScheme.substring(5);
+        }
+        if (withoutScheme.startsWith("//")) {
+            int pathStart = withoutScheme.indexOf('/', 2);
+            withoutScheme = pathStart >= 0 ? withoutScheme.substring(pathStart) : "/";
+        }
+        if (!withoutScheme.startsWith("/")) {
+            withoutScheme = "/" + withoutScheme;
+        }
+        if (withoutScheme.contains("%")) {
+            return decodePercentEncoded(withoutScheme);
+        }
+        return withoutScheme;
     }
 
     static String decodePercentEncoded(String path) {
-        StringBuilder out = new StringBuilder(path.length());
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream(path.length());
         for (int i = 0; i < path.length(); i++) {
             char c = path.charAt(i);
             if (c == '%' && i + 2 < path.length()) {
                 int hi = hexValue(path.charAt(i + 1));
                 int lo = hexValue(path.charAt(i + 2));
                 if (hi >= 0 && lo >= 0) {
-                    out.append((char) ((hi << 4) + lo));
+                    bytes.write((hi << 4) + lo);
                     i += 2;
                     continue;
                 }
             }
-            out.append(c);
+            byte[] charBytes = String.valueOf(c).getBytes(StandardCharsets.UTF_8);
+            bytes.write(charBytes, 0, charBytes.length);
         }
-        return out.toString();
+        return new String(bytes.toByteArray(), StandardCharsets.UTF_8);
     }
 
     private static int hexValue(char c) {

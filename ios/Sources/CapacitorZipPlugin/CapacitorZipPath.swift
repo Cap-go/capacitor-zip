@@ -3,26 +3,40 @@ import Foundation
 enum CapacitorZipPath {
     /// Resolves `file://` URLs and percent-encoded path segments to a filesystem path.
     static func resolveFilesystemPath(_ path: String) -> String {
-        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.lowercased().hasPrefix("file:") {
-            if let url = URL(string: trimmed), url.isFileURL {
+        if path.lowercased().hasPrefix("file:") {
+            if let url = URL(string: path), url.isFileURL {
                 return url.path
             }
-            if let url = URL(string: trimmed) {
-                let path = url.path
-                if !path.isEmpty {
-                    return path
-                }
-            }
+            return stripFileScheme(path)
         }
-        if trimmed.contains("%") {
-            return decodePercentEncoded(trimmed)
+        if !path.lowercased().hasPrefix("content:") && path.contains("%") {
+            return decodePercentEncoded(path)
         }
-        return trimmed
+        return path
+    }
+
+    static func stripFileScheme(_ path: String) -> String {
+        var withoutScheme = path
+        if withoutScheme.lowercased().hasPrefix("file://") {
+            withoutScheme = String(withoutScheme.dropFirst(7))
+        } else if withoutScheme.lowercased().hasPrefix("file:") {
+            withoutScheme = String(withoutScheme.dropFirst(5))
+        }
+        if withoutScheme.hasPrefix("//") {
+            let pathStart = withoutScheme.dropFirst(2).firstIndex(of: "/")
+            withoutScheme = pathStart.map { String(withoutScheme[$0...]) } ?? "/"
+        }
+        if !withoutScheme.hasPrefix("/") {
+            withoutScheme = "/" + withoutScheme
+        }
+        if withoutScheme.contains("%") {
+            return decodePercentEncoded(withoutScheme)
+        }
+        return withoutScheme
     }
 
     static func decodePercentEncoded(_ path: String) -> String {
-        var out = ""
+        var bytes = [UInt8]()
         var index = path.startIndex
         while index < path.endIndex {
             let c = path[index]
@@ -33,16 +47,17 @@ enum CapacitorZipPath {
                    afterNext < path.endIndex,
                    let hi = hexValue(path[next]),
                    let lo = hexValue(path[afterNext]) {
-                    let code = (hi << 4) + lo
-                    out.append(Character(UnicodeScalar(code)!))
+                    bytes.append(UInt8((hi << 4) + lo))
                     index = path.index(after: afterNext)
                     continue
                 }
             }
-            out.append(c)
+            for byte in String(c).utf8 {
+                bytes.append(byte)
+            }
             index = path.index(after: index)
         }
-        return out
+        return String(bytes: bytes, encoding: .utf8) ?? path
     }
 
     private static func hexValue(_ c: Character) -> Int? {

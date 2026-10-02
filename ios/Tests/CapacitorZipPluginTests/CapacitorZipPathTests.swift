@@ -39,6 +39,17 @@ class CapacitorZipPathTests: XCTestCase {
         XCTAssertEqual("/sdcard/100%/a.zip", CapacitorZipPath.resolveFilesystemPath("/sdcard/100%/a.zip"))
     }
 
+    func testResolveFilesystemPath_decodesUtf8PercentSequences() {
+        XCTAssertEqual("/tmp/Música/file.zip", CapacitorZipPath.resolveFilesystemPath("/tmp/M%C3%BAsica/file.zip"))
+    }
+
+    func testResolveFilesystemPath_stripsFileSchemeWhenUrlParseFails() {
+        XCTAssertEqual(
+            "/tmp/my folder/file.zip",
+            CapacitorZipPath.resolveFilesystemPath("file:///tmp/my folder/file.zip")
+        )
+    }
+
     func testZipUnzip_acceptsFileUrlPaths() throws {
         let fileManager = FileManager.default
         let temp = fileManager.temporaryDirectory
@@ -49,7 +60,10 @@ class CapacitorZipPathTests: XCTestCase {
         let extractDir = temp.appendingPathComponent("extract-\(UUID().uuidString)", isDirectory: true)
 
         let implementation = CapacitorZip()
-        try implementation.zip(source: sourceFile.path, destination: zipFile.path)
+        try implementation.zip(
+            source: sourceFile.absoluteURL.absoluteString,
+            destination: zipFile.absoluteURL.absoluteString
+        )
         try implementation.unzip(
             source: zipFile.absoluteURL.absoluteString,
             destination: extractDir.absoluteURL.absoluteString
