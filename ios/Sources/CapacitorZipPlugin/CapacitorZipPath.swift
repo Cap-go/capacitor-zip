@@ -26,10 +26,15 @@ enum CapacitorZipPath {
             let pathStart = withoutScheme.dropFirst(2).firstIndex(of: "/")
             withoutScheme = pathStart.map { String(withoutScheme[$0...]) } ?? "/"
         } else if !withoutScheme.hasPrefix("/") {
-            if let slashIndex = withoutScheme.firstIndex(of: "/") {
-                withoutScheme = String(withoutScheme[slashIndex...])
+            if let slashIndex = withoutScheme.firstIndex(of: "/"), slashIndex > withoutScheme.startIndex {
+                let authority = String(withoutScheme[..<slashIndex])
+                if isFileUrlAuthority(authority) {
+                    withoutScheme = String(withoutScheme[slashIndex...])
+                } else {
+                    withoutScheme = "/" + withoutScheme
+                }
             } else {
-                withoutScheme = "/"
+                withoutScheme = "/" + withoutScheme
             }
         }
         if withoutScheme.contains("%") {
@@ -61,6 +66,22 @@ enum CapacitorZipPath {
             index = path.index(after: index)
         }
         return String(bytes: bytes, encoding: .utf8) ?? path
+    }
+
+    private static func isFileUrlAuthority(_ segment: String) -> Bool {
+        if segment.lowercased() == "localhost" {
+            return true
+        }
+        let parts = segment.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 4 else {
+            return false
+        }
+        return parts.allSatisfy { part in
+            guard let value = Int(part), value >= 0, value <= 255 else {
+                return false
+            }
+            return true
+        }
     }
 
     private static func hexValue(_ c: Character) -> Int? {

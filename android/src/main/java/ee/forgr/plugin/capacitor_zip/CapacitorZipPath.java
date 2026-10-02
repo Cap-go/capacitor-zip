@@ -48,7 +48,11 @@ final class CapacitorZipPath {
             withoutScheme = pathStart >= 0 ? withoutScheme.substring(pathStart) : "/";
         } else if (!withoutScheme.startsWith("/")) {
             int slash = withoutScheme.indexOf('/');
-            withoutScheme = slash >= 0 ? withoutScheme.substring(slash) : "/";
+            if (slash > 0 && isFileUrlAuthority(withoutScheme.substring(0, slash))) {
+                withoutScheme = withoutScheme.substring(slash);
+            } else {
+                withoutScheme = "/" + withoutScheme;
+            }
         }
         if (withoutScheme.contains("%")) {
             return decodePercentEncoded(withoutScheme);
@@ -73,6 +77,13 @@ final class CapacitorZipPath {
             bytes.write(charBytes, 0, charBytes.length);
         }
         return new String(bytes.toByteArray(), StandardCharsets.UTF_8);
+    }
+
+    private static boolean isFileUrlAuthority(String segment) {
+        if ("localhost".equalsIgnoreCase(segment)) {
+            return true;
+        }
+        return segment.matches("\\d{1,3}(\\.\\d{1,3}){3}");
     }
 
     private static int hexValue(char c) {
