@@ -115,6 +115,9 @@ export interface ZipOptions {
    * - Android: Use absolute file paths or content:// URIs for files accessible via the Android Storage Access Framework.
    * - Web: Not supported.
    *
+   * On iOS and Android, `file://` URLs (for example from Cordova `FileEntry.nativeURL`) and
+   * percent-encoded path segments are normalized to filesystem paths before zip/unzip runs.
+   *
    * @since 7.0.0
    * @example '/Users/app/Documents/my-folder'
    * @example '/var/mobile/Containers/Data/Application/.../Documents/file.pdf'
@@ -132,6 +135,9 @@ export interface ZipOptions {
    * - iOS: Use file:// URLs or absolute paths. Relative paths are resolved from the app's documents directory.
    * - Android: Use absolute file paths. The plugin will create any missing parent directories.
    * - Web: Not supported.
+   *
+   * On iOS and Android, `file://` URLs and percent-encoded path segments are normalized to
+   * filesystem paths before zip runs.
    *
    * @since 7.0.0
    * @example '/Users/app/Documents/archive.zip'
@@ -209,6 +215,9 @@ export interface UnzipOptions {
    * - Android: Use absolute file paths or content:// URIs for files accessible via the Android Storage Access Framework.
    * - Web: Use HTTP/HTTPS URLs. The file will be fetched and extracted in the browser.
    *
+   * On iOS and Android, `file://` URLs (for example from Cordova `FileEntry.nativeURL`) and
+   * percent-encoded path segments are normalized to filesystem paths before unzip runs.
+   *
    * @since 7.0.0
    * @example '/Users/app/Documents/archive.zip'
    * @example '/var/mobile/Containers/Data/Application/.../Documents/backup.zip'
@@ -228,6 +237,9 @@ export interface UnzipOptions {
    * - iOS: Use file:// URLs or absolute paths. Relative paths are resolved from the app's documents directory.
    * - Android: Use absolute file paths. Includes protection against zip slip vulnerabilities.
    * - Web: Not applicable. Files are downloaded individually to the browser's download folder.
+   *
+   * On iOS and Android, `file://` URLs and percent-encoded path segments are normalized to
+   * filesystem paths before unzip runs.
    *
    * @since 7.0.0
    * @example '/Users/app/Documents/extracted'

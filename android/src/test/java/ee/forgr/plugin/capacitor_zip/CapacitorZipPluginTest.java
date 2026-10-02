@@ -77,6 +77,23 @@ public class CapacitorZipPluginTest {
     }
 
     @Test
+    public void unzipWithoutPassword_acceptsFileUrlSource() throws Exception {
+        File zipFile = createZipWithEntry("hello.txt", "hello");
+        File destDir = tempFolder.newFolder("dest");
+        String fileUrl = "file://" + zipFile.getAbsolutePath();
+        File resolvedSource = new File(CapacitorZipPath.resolveFilesystemPath(fileUrl));
+
+        CapacitorZipPlugin plugin = new CapacitorZipPlugin();
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithoutPassword", File.class, File.class);
+        unzip.setAccessible(true);
+        unzip.invoke(plugin, resolvedSource, destDir);
+
+        File extracted = new File(destDir, "hello.txt");
+        assertTrue(extracted.exists());
+        assertEquals("hello", new String(Files.readAllBytes(extracted.toPath()), StandardCharsets.UTF_8));
+    }
+
+    @Test
     public void unzipWithoutPassword_extractsValidZip() throws Exception {
         File zipFile = createZipWithEntry("hello.txt", "hello");
         File destDir = tempFolder.newFolder("dest");
