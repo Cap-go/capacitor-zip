@@ -16,8 +16,45 @@ enum CapacitorZipPath {
             }
         }
         if trimmed.contains("%") {
-            return trimmed.removingPercentEncoding ?? trimmed
+            return decodePercentEncoded(trimmed)
         }
         return trimmed
+    }
+
+    static func decodePercentEncoded(_ path: String) -> String {
+        var out = ""
+        var index = path.startIndex
+        while index < path.endIndex {
+            let c = path[index]
+            if c == "%" {
+                let next = path.index(after: index)
+                let afterNext = path.index(next, offsetBy: 1, limitedBy: path.endIndex)
+                if let afterNext = afterNext,
+                   afterNext < path.endIndex,
+                   let hi = hexValue(path[next]),
+                   let lo = hexValue(path[afterNext]) {
+                    let code = (hi << 4) + lo
+                    out.append(Character(UnicodeScalar(code)!))
+                    index = path.index(after: afterNext)
+                    continue
+                }
+            }
+            out.append(c)
+            index = path.index(after: index)
+        }
+        return out
+    }
+
+    private static func hexValue(_ c: Character) -> Int? {
+        switch c {
+        case "0"..."9":
+            return Int(c.asciiValue! - Character("0").asciiValue!)
+        case "a"..."f":
+            return Int(c.asciiValue! - Character("a").asciiValue!) + 10
+        case "A"..."F":
+            return Int(c.asciiValue! - Character("A").asciiValue!) + 10
+        default:
+            return nil
+        }
     }
 }

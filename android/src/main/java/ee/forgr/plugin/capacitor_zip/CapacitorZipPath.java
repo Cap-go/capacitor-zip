@@ -1,8 +1,6 @@
 package ee.forgr.plugin.capacitor_zip;
 
 import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 
 final class CapacitorZipPath {
 
@@ -23,7 +21,7 @@ final class CapacitorZipPath {
                 if ("file".equalsIgnoreCase(uri.getScheme())) {
                     String uriPath = uri.getPath();
                     if (uriPath != null && !uriPath.isEmpty()) {
-                        return URLDecoder.decode(uriPath, StandardCharsets.UTF_8);
+                        return uriPath;
                     }
                 }
             } catch (Exception ignored) {
@@ -31,8 +29,39 @@ final class CapacitorZipPath {
             }
         }
         if (trimmed.contains("%")) {
-            return URLDecoder.decode(trimmed, StandardCharsets.UTF_8);
+            return decodePercentEncoded(trimmed);
         }
         return trimmed;
+    }
+
+    static String decodePercentEncoded(String path) {
+        StringBuilder out = new StringBuilder(path.length());
+        for (int i = 0; i < path.length(); i++) {
+            char c = path.charAt(i);
+            if (c == '%' && i + 2 < path.length()) {
+                int hi = hexValue(path.charAt(i + 1));
+                int lo = hexValue(path.charAt(i + 2));
+                if (hi >= 0 && lo >= 0) {
+                    out.append((char) ((hi << 4) + lo));
+                    i += 2;
+                    continue;
+                }
+            }
+            out.append(c);
+        }
+        return out.toString();
+    }
+
+    private static int hexValue(char c) {
+        if (c >= '0' && c <= '9') {
+            return c - '0';
+        }
+        if (c >= 'a' && c <= 'f') {
+            return c - 'a' + 10;
+        }
+        if (c >= 'A' && c <= 'F') {
+            return c - 'A' + 10;
+        }
+        return -1;
     }
 }

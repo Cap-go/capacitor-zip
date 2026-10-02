@@ -20,6 +20,25 @@ class CapacitorZipPathTests: XCTestCase {
         )
     }
 
+    func testResolveFilesystemPath_preservesPlusSignInPlainPath() {
+        XCTAssertEqual("/sdcard/a+b.zip", CapacitorZipPath.resolveFilesystemPath("/sdcard/a+b.zip"))
+        XCTAssertEqual(
+            "/sdcard/a+b.zip",
+            CapacitorZipPath.resolveFilesystemPath("file:///sdcard/a%2Bb.zip")
+        )
+    }
+
+    func testResolveFilesystemPath_decodesPercentInFileUrlWithoutDoubleDecoding() {
+        XCTAssertEqual(
+            "/sdcard/100%.zip",
+            CapacitorZipPath.resolveFilesystemPath("file:///sdcard/100%25.zip")
+        )
+    }
+
+    func testResolveFilesystemPath_leavesLiteralPercentInPlainPath() {
+        XCTAssertEqual("/sdcard/100%/a.zip", CapacitorZipPath.resolveFilesystemPath("/sdcard/100%/a.zip"))
+    }
+
     func testZipUnzip_acceptsFileUrlPaths() throws {
         let fileManager = FileManager.default
         let temp = fileManager.temporaryDirectory

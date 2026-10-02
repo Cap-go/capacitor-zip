@@ -30,4 +30,20 @@ public class CapacitorZipPathTest {
         String contentUri = "content://com.example.provider/document/123";
         assertEquals(contentUri, CapacitorZipPath.resolveFilesystemPath(contentUri));
     }
+
+    @Test
+    public void resolveFilesystemPath_preservesPlusSignInPlainPath() {
+        assertEquals("/sdcard/a+b.zip", CapacitorZipPath.resolveFilesystemPath("/sdcard/a+b.zip"));
+        assertEquals("/sdcard/a+b.zip", CapacitorZipPath.resolveFilesystemPath("file:///sdcard/a%2Bb.zip"));
+    }
+
+    @Test
+    public void resolveFilesystemPath_decodesPercentInFileUrlWithoutDoubleDecoding() {
+        assertEquals("/sdcard/100%.zip", CapacitorZipPath.resolveFilesystemPath("file:///sdcard/100%25.zip"));
+    }
+
+    @Test
+    public void resolveFilesystemPath_leavesLiteralPercentInPlainPath() {
+        assertEquals("/sdcard/100%/a.zip", CapacitorZipPath.resolveFilesystemPath("/sdcard/100%/a.zip"));
+    }
 }
