@@ -50,6 +50,10 @@ class CapacitorZipPathTests: XCTestCase {
         )
     }
 
+    func testStripFileScheme_stripsLocalhostAuthority() {
+        XCTAssertEqual("/tmp/archive.zip", CapacitorZipPath.stripFileScheme("file://localhost/tmp/archive.zip"))
+    }
+
     func testZipUnzip_acceptsFileUrlPaths() throws {
         let fileManager = FileManager.default
         let temp = fileManager.temporaryDirectory

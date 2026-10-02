@@ -62,4 +62,9 @@ public class CapacitorZipPathTest {
     public void resolveFilesystemPath_stripsFileSchemeWhenUriParseFails() {
         assertEquals("/tmp/my folder/file.zip", CapacitorZipPath.resolveFilesystemPath("file:///tmp/my folder/file.zip"));
     }
+
+    @Test
+    public void resolveFilesystemPath_stripsLocalhostAuthorityOnFallback() {
+        assertEquals("/tmp/archive.zip", CapacitorZipPath.stripFileScheme("file://localhost/tmp/archive.zip"));
+    }
 }

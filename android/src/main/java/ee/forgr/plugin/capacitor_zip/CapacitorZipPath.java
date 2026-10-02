@@ -46,9 +46,9 @@ final class CapacitorZipPath {
         if (withoutScheme.startsWith("//")) {
             int pathStart = withoutScheme.indexOf('/', 2);
             withoutScheme = pathStart >= 0 ? withoutScheme.substring(pathStart) : "/";
-        }
-        if (!withoutScheme.startsWith("/")) {
-            withoutScheme = "/" + withoutScheme;
+        } else if (!withoutScheme.startsWith("/")) {
+            int slash = withoutScheme.indexOf('/');
+            withoutScheme = slash >= 0 ? withoutScheme.substring(slash) : "/";
         }
         if (withoutScheme.contains("%")) {
             return decodePercentEncoded(withoutScheme);

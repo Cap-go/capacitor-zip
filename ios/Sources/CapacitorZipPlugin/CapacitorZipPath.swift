@@ -25,9 +25,12 @@ enum CapacitorZipPath {
         if withoutScheme.hasPrefix("//") {
             let pathStart = withoutScheme.dropFirst(2).firstIndex(of: "/")
             withoutScheme = pathStart.map { String(withoutScheme[$0...]) } ?? "/"
-        }
-        if !withoutScheme.hasPrefix("/") {
-            withoutScheme = "/" + withoutScheme
+        } else if !withoutScheme.hasPrefix("/") {
+            if let slashIndex = withoutScheme.firstIndex(of: "/") {
+                withoutScheme = String(withoutScheme[slashIndex...])
+            } else {
+                withoutScheme = "/"
+            }
         }
         if withoutScheme.contains("%") {
             return decodePercentEncoded(withoutScheme)
