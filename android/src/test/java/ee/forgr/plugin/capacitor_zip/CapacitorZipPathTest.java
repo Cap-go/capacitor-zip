@@ -72,4 +72,9 @@ public class CapacitorZipPathTest {
     public void resolveFilesystemPath_preservesRelativeFileSchemePath() {
         assertEquals("/my archive.zip", CapacitorZipPath.resolveFilesystemPath("file:my archive.zip"));
     }
+
+    @Test
+    public void resolveFilesystemPath_doesNotTreatInvalidIpv4AsAuthority() {
+        assertEquals("/256.0.0.1/archive.zip", CapacitorZipPath.stripFileScheme("file://256.0.0.1/archive.zip"));
+    }
 }

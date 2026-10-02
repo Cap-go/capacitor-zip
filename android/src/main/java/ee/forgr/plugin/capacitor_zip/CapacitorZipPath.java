@@ -83,7 +83,24 @@ final class CapacitorZipPath {
         if ("localhost".equalsIgnoreCase(segment)) {
             return true;
         }
-        return segment.matches("\\d{1,3}(\\.\\d{1,3}){3}");
+        String[] octets = segment.split("\\.");
+        if (octets.length != 4) {
+            return false;
+        }
+        for (String octet : octets) {
+            if (octet.isEmpty() || octet.length() > 3) {
+                return false;
+            }
+            try {
+                int value = Integer.parseInt(octet);
+                if (value < 0 || value > 255) {
+                    return false;
+                }
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static int hexValue(char c) {
