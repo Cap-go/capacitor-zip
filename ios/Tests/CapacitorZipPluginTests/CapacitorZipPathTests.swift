@@ -43,6 +43,14 @@ class CapacitorZipPathTests: XCTestCase {
         XCTAssertEqual("/tmp/Música/file.zip", CapacitorZipPath.resolveFilesystemPath("/tmp/M%C3%BAsica/file.zip"))
     }
 
+    func testResolveFilesystemPath_preservesNonAsciiAfterPercentLiterally() {
+        XCTAssertEqual("/tmp/%5\u{301}x.zip", CapacitorZipPath.resolveFilesystemPath("/tmp/%5\u{301}x.zip"))
+    }
+
+    func testResolveFilesystemPath_preservesNonBmpCharacterWhenDecoding() {
+        XCTAssertEqual("/tmp/\u{1F600} a.zip", CapacitorZipPath.resolveFilesystemPath("/tmp/\u{1F600}%20a.zip"))
+    }
+
     func testResolveFilesystemPath_stripsFileSchemeWhenUrlParseFails() {
         XCTAssertEqual(
             "/tmp/my folder/file.zip",

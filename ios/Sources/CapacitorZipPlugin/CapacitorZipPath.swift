@@ -85,13 +85,18 @@ enum CapacitorZipPath {
     }
 
     private static func hexValue(_ c: Character) -> Int? {
-        switch c {
-        case "0"..."9":
-            return Int(c.asciiValue! - Character("0").asciiValue!)
-        case "a"..."f":
-            return Int(c.asciiValue! - Character("a").asciiValue!) + 10
-        case "A"..."F":
-            return Int(c.asciiValue! - Character("A").asciiValue!) + 10
+        // Reject non-ASCII first: combining marks (e.g. "5\u{301}") fall inside the
+        // Character ranges below but have no asciiValue.
+        guard let ascii = c.asciiValue else {
+            return nil
+        }
+        switch ascii {
+        case UInt8(ascii: "0")...UInt8(ascii: "9"):
+            return Int(ascii - UInt8(ascii: "0"))
+        case UInt8(ascii: "a")...UInt8(ascii: "f"):
+            return Int(ascii - UInt8(ascii: "a")) + 10
+        case UInt8(ascii: "A")...UInt8(ascii: "F"):
+            return Int(ascii - UInt8(ascii: "A")) + 10
         default:
             return nil
         }

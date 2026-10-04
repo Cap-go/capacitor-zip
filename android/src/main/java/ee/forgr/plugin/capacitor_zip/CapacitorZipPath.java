@@ -62,19 +62,23 @@ final class CapacitorZipPath {
 
     static String decodePercentEncoded(String path) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream(path.length());
-        for (int i = 0; i < path.length(); i++) {
+        int i = 0;
+        while (i < path.length()) {
             char c = path.charAt(i);
             if (c == '%' && i + 2 < path.length()) {
                 int hi = hexValue(path.charAt(i + 1));
                 int lo = hexValue(path.charAt(i + 2));
                 if (hi >= 0 && lo >= 0) {
                     bytes.write((hi << 4) + lo);
-                    i += 2;
+                    i += 3;
                     continue;
                 }
             }
-            byte[] charBytes = String.valueOf(c).getBytes(StandardCharsets.UTF_8);
+            // Copy whole code points so surrogate pairs (non-BMP characters) stay intact.
+            int codePoint = path.codePointAt(i);
+            byte[] charBytes = new String(Character.toChars(codePoint)).getBytes(StandardCharsets.UTF_8);
             bytes.write(charBytes, 0, charBytes.length);
+            i += Character.charCount(codePoint);
         }
         return new String(bytes.toByteArray(), StandardCharsets.UTF_8);
     }

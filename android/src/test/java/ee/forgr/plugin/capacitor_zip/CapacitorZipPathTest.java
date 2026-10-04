@@ -53,6 +53,12 @@ public class CapacitorZipPathTest {
     }
 
     @Test
+    public void resolveFilesystemPath_preservesNonBmpCharacterWhenDecoding() {
+        String emoji = new String(Character.toChars(0x1F600));
+        assertEquals("/tmp/" + emoji + " a.zip", CapacitorZipPath.resolveFilesystemPath("/tmp/" + emoji + "%20a.zip"));
+    }
+
+    @Test
     public void resolveFilesystemPath_leavesContentUriPercentEncodingUnchanged() {
         String contentUri = "content://com.example.provider/document/100%2Ffile";
         assertEquals(contentUri, CapacitorZipPath.resolveFilesystemPath(contentUri));
