@@ -1,6 +1,6 @@
 # @capgo/capacitor-zip
 
-Zip and unzip files in your Capacitor app for free, on iOS, Android and the web.
+Zip and unzip files in your Capacitor app for free on iOS and Android, and unzip in the browser on the web.
 
 <a href="https://capgo.app/?ref=plugin_zip"><img src="https://capgo.app/readme-banner.svg?repo=Cap-go/capacitor-zip" alt="Capgo - Instant updates for Capacitor" /></a>
 
@@ -21,7 +21,7 @@ Zip and unzip files in your Capacitor app for free, on iOS, Android and the web.
 - **Unzip**: `unzip()` extracts an archive to a destination folder.
 - **Native libraries**: ZIPFoundation on iOS and zip4j on Android.
 - **Passwords on Android**: AES-256 encrypted archives when you pass a password.
-- **Web unzip**: `unzip()` works in the browser.
+- **Web unzip**: `unzip()` works in the browser and downloads each file separately, without the folder structure.
 - **Platforms**: iOS, Android and Web. `zip()` is not available on web.
 
 ## Why Capacitor Zip?
