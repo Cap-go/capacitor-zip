@@ -1,12 +1,28 @@
 # @capgo/capacitor-zip
-<a href="https://capgo.app/"><img src="https://capgo.app/readme-banner.svg?repo=Cap-go/capacitor-zip" alt="Capgo - Instant updates for Capacitor" /></a>
+
+Zip and unzip files in your Capacitor app for free, on iOS, Android and the web.
+
+<a href="https://capgo.app/?ref=plugin_zip"><img src="https://capgo.app/readme-banner.svg?repo=Cap-go/capacitor-zip" alt="Capgo - Instant updates for Capacitor" /></a>
 
 <div align="center">
-  <h2><a href="https://capgo.app/?ref=plugin_zip"> ➡️ Get Instant updates for your App with Capgo</a></h2>
-  <h2><a href="https://capgo.app/consulting/?ref=plugin_zip"> Missing a feature? We'll build the plugin for you 💪</a></h2>
+  <p><b>Capgo</b>: open-source live updates for Ionic and Capacitor apps. Ship OTA fixes and features instantly, without waiting for app store review.</p>
+  <h2><a href="https://capgo.app/register/?ref=plugin_zip">➡️ Get started for free</a></h2>
+  <p>14-day unlimited free trial. No credit card required</p>
+  <p><a href="https://capgo.app/consulting/?ref=plugin_zip">Missing a feature? We'll build the plugin for you 💪</a></p>
 </div>
 
-A free Capacitor plugin for zipping and unzipping files on iOS, Android, and Web platforms.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cap-go/capacitor-zip/main/assets/github-social-preview.png" alt="@capgo/capacitor-zip for Capacitor apps" width="300" />
+</p>
+
+## Key features
+
+- **Zip**: `zip()` compresses a file or a folder into an archive.
+- **Unzip**: `unzip()` extracts an archive to a destination folder.
+- **Native libraries**: ZIPFoundation on iOS and zip4j on Android.
+- **Passwords on Android**: AES-256 encrypted archives when you pass a password.
+- **Web unzip**: `unzip()` works in the browser.
+- **Platforms**: iOS, Android and Web. `zip()` is not available on web.
 
 ## Why Capacitor Zip?
 
