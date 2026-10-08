@@ -43,13 +43,15 @@ public class CapacitorZipPlugin extends Plugin {
         }
 
         try {
-            File sourceFile = new File(source);
+            String resolvedSource = CapacitorZipPath.resolveFilesystemPath(source);
+            String resolvedDestination = CapacitorZipPath.resolveFilesystemPath(destination);
+            File sourceFile = new File(resolvedSource);
             if (!sourceFile.exists()) {
                 call.reject("Source path does not exist");
                 return;
             }
 
-            File destinationFile = new File(destination);
+            File destinationFile = new File(resolvedDestination);
             File parentDir = destinationFile.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
                 parentDir.mkdirs();
@@ -86,13 +88,15 @@ public class CapacitorZipPlugin extends Plugin {
         }
 
         try {
-            File sourceFile = new File(source);
+            String resolvedSource = CapacitorZipPath.resolveFilesystemPath(source);
+            String resolvedDestination = CapacitorZipPath.resolveFilesystemPath(destination);
+            File sourceFile = new File(resolvedSource);
             if (!sourceFile.exists()) {
                 call.reject("Source zip file does not exist");
                 return;
             }
 
-            File destinationDir = new File(destination);
+            File destinationDir = new File(resolvedDestination);
             if (!destinationDir.exists()) {
                 destinationDir.mkdirs();
             }

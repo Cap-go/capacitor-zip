@@ -8,11 +8,13 @@ public class CapacitorZip: NSObject {
      * Note: Password protection is not supported on iOS with ZIPFoundation
      */
     public func zip(source: String, destination: String, password: String? = nil, includeParentFolder: Bool = true) throws {
-        let sourceURL = URL(fileURLWithPath: source)
-        let destinationURL = URL(fileURLWithPath: destination)
+        let sourcePath = CapacitorZipPath.resolveFilesystemPath(source)
+        let destinationPath = CapacitorZipPath.resolveFilesystemPath(destination)
+        let sourceURL = URL(fileURLWithPath: sourcePath)
+        let destinationURL = URL(fileURLWithPath: destinationPath)
 
         // Check if source exists
-        guard FileManager.default.fileExists(atPath: source) else {
+        guard FileManager.default.fileExists(atPath: sourcePath) else {
             throw NSError(domain: "CapacitorZip", code: 1, userInfo: [NSLocalizedDescriptionKey: "Source path does not exist"])
         }
 
@@ -28,13 +30,13 @@ public class CapacitorZip: NSObject {
         }
 
         // Remove existing destination file if it exists
-        if FileManager.default.fileExists(atPath: destination) {
+        if FileManager.default.fileExists(atPath: destinationPath) {
             try FileManager.default.removeItem(at: destinationURL)
         }
 
         // Check if source is a directory
         var isDirectory: ObjCBool = false
-        FileManager.default.fileExists(atPath: source, isDirectory: &isDirectory)
+        FileManager.default.fileExists(atPath: sourcePath, isDirectory: &isDirectory)
         
         if isDirectory.boolValue && !includeParentFolder {
             // Zip only the contents of the directory without the parent folder
@@ -112,11 +114,13 @@ public class CapacitorZip: NSObject {
      * Note: Password protection is not supported on iOS with ZIPFoundation
      */
     public func unzip(source: String, destination: String, password: String? = nil) throws {
-        let sourceURL = URL(fileURLWithPath: source)
-        let destinationURL = URL(fileURLWithPath: destination)
+        let sourcePath = CapacitorZipPath.resolveFilesystemPath(source)
+        let destinationPath = CapacitorZipPath.resolveFilesystemPath(destination)
+        let sourceURL = URL(fileURLWithPath: sourcePath)
+        let destinationURL = URL(fileURLWithPath: destinationPath)
 
         // Check if source exists
-        guard FileManager.default.fileExists(atPath: source) else {
+        guard FileManager.default.fileExists(atPath: sourcePath) else {
             throw NSError(domain: "CapacitorZip", code: 2, userInfo: [NSLocalizedDescriptionKey: "Source zip file does not exist"])
         }
 
@@ -126,7 +130,7 @@ public class CapacitorZip: NSObject {
         }
 
         // Create destination directory if it doesn't exist
-        if !FileManager.default.fileExists(atPath: destination) {
+        if !FileManager.default.fileExists(atPath: destinationPath) {
             try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true, attributes: nil)
         }
 
