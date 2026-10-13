@@ -148,6 +148,9 @@ public class CapacitorZipPlugin extends Plugin {
             data.put("filesTotal", filesTotal);
         }
 
+        if (getBridge() == null) {
+            return;
+        }
         notifyListeners("progress", data);
     }
 
