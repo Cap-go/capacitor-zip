@@ -166,7 +166,13 @@ public class CapacitorZipPlugin extends Plugin {
         ProgressMonitor monitor = zipFile.getProgressMonitor();
         while (monitor.getState() == ProgressMonitor.State.BUSY) {
             emitFromZip4jMonitor(operation, monitor, false);
-            Thread.sleep(16);
+            try {
+                Thread.sleep(16);
+            } catch (InterruptedException e) {
+                monitor.setCancelAllTasks(true);
+                Thread.currentThread().interrupt();
+                throw e;
+            }
         }
         emitFromZip4jMonitor(operation, monitor, true);
         if (monitor.getResult() == ProgressMonitor.Result.ERROR) {
