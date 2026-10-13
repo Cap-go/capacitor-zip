@@ -19,6 +19,22 @@ public final class CapacitorZipProgress {
 
     private CapacitorZipProgress() {}
 
+    /**
+     * Progress ratio from 0 to 1. When the operation has finished and there is no byte or file total, returns 1.
+     */
+    public static double computeProgress(long loaded, long total, int filesCompleted, int filesTotal, boolean operationComplete) {
+        if (total > 0) {
+            return Math.min(1.0, (double) loaded / total);
+        }
+        if (filesTotal > 0) {
+            return Math.min(1.0, (double) filesCompleted / filesTotal);
+        }
+        if (operationComplete) {
+            return 1.0;
+        }
+        return 0;
+    }
+
     public static Stats computeSourceStats(File source, boolean includeParentFolder) {
         Stats stats = new Stats();
         if (!source.exists()) {

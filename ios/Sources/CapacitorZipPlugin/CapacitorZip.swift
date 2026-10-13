@@ -86,10 +86,17 @@ public class CapacitorZip: NSObject {
 
         if isDirectory.boolValue {
             let dirPath = archivePath + "/"
-            try archive.addEntry(with: dirPath, type: .directory, uncompressedSize: Int64(0), modificationDate: modificationDate, provider: { _, _ in
-                return Data()
-            })
-            tracker.completeFile(bytes: 0)
+            let permissions = (attributes?[.posixPermissions] as? NSNumber)?.uint16Value
+            try archive.addEntry(
+                with: dirPath,
+                type: .directory,
+                uncompressedSize: Int64(0),
+                modificationDate: modificationDate,
+                permissions: permissions,
+                provider: { _, _ in
+                    return Data()
+                }
+            )
 
             let contents = try fileManager.contentsOfDirectory(at: itemURL, includingPropertiesForKeys: nil)
             let sortedContents = contents.sorted { $0.lastPathComponent < $1.lastPathComponent }
@@ -206,24 +213,27 @@ struct ProgressTracker {
         if stats.filesTotal > 0 {
             filesCompleted = stats.filesTotal
         }
-        emit()
+        emit(operationComplete: true)
     }
 
-    private func emit() {
+    private func emit(operationComplete: Bool = false) {
         guard let handler = handler else { return }
 
-        var progress: Double = 0
-        if stats.totalBytes > 0 {
-            progress = min(1.0, Double(loaded) / Double(stats.totalBytes))
-        } else if stats.filesTotal > 0 {
-            progress = min(1.0, Double(filesCompleted) / Double(stats.filesTotal))
-        }
+        let progress = CapacitorZipProgressMath.progressRatio(
+            loaded: loaded,
+            totalBytes: stats.totalBytes,
+            filesCompleted: filesCompleted,
+            filesTotal: stats.filesTotal,
+            operationComplete: operationComplete
+        )
+        let lengthComputable = stats.totalBytes > 0 || stats.filesTotal > 0
 
         var payload: [String: Any] = [
             "operation": operation,
             "loaded": loaded,
             "total": stats.totalBytes,
             "progress": progress,
+            "lengthComputable": lengthComputable,
             "filesCompleted": filesCompleted,
             "filesTotal": stats.filesTotal,
         ]

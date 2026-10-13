@@ -1,6 +1,8 @@
 package ee.forgr.plugin.capacitor_zip;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -26,6 +28,22 @@ public class CapacitorZipProgressTest {
         CapacitorZipProgress.Stats stats = CapacitorZipProgress.computeSourceStats(file, true);
         assertEquals(1, stats.filesTotal);
         assertEquals(file.length(), stats.totalBytes);
+    }
+
+    @Test
+    public void computeProgress_emptyArchiveComplete_returnsOne() {
+        assertEquals(1.0, CapacitorZipProgress.computeProgress(0, 0, 0, 0, true), 0.0001);
+        assertEquals(0.0, CapacitorZipProgress.computeProgress(0, 0, 0, 0, false), 0.0001);
+    }
+
+    @Test
+    public void progressThrottle_skipsRapidDuplicateProgress() {
+        CapacitorZipProgressThrottle throttle = new CapacitorZipProgressThrottle();
+        assertTrue(throttle.shouldEmit(0.1, false));
+        throttle.recordEmit(0.1);
+        assertFalse(throttle.shouldEmit(0.1001, false));
+        assertTrue(throttle.shouldEmit(0.5, false));
+        assertTrue(throttle.shouldEmit(0.1, true));
     }
 
     @Test

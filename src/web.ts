@@ -3,6 +3,12 @@ import { BlobReader, BlobWriter, ZipReader } from '@zip.js/zip.js';
 import type { Entry } from '@zip.js/zip.js';
 
 import type { CapacitorZipPlugin, UnzipOptions, ZipOptions, ZipProgressEvent } from './definitions';
+import {
+  computeZipProgressRatio,
+  estimateUncompressedBytesLoaded,
+  isZipProgressLengthComputable,
+  ZipProgressEmitThrottle,
+} from './progress';
 
 export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
   async zip(_options: ZipOptions): Promise<void> {
@@ -32,18 +38,27 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
 
       let filesCompleted = 0;
       let loadedBytes = 0;
+      const throttle = new ZipProgressEmitThrottle();
 
-      const emitProgress = (currentFile?: string) => {
+      const emitProgress = (currentFile?: string, operationComplete = false) => {
+        const progress = computeZipProgressRatio({
+          loaded: loadedBytes,
+          total: totalBytes,
+          filesCompleted,
+          filesTotal,
+          operationComplete,
+        });
+        if (!throttle.shouldEmit(progress, operationComplete)) {
+          return;
+        }
+        throttle.recordEmit(progress);
+
         const event: ZipProgressEvent = {
           operation: 'unzip',
           loaded: loadedBytes,
           total: totalBytes,
-          progress:
-            totalBytes > 0
-              ? Math.min(1, loadedBytes / totalBytes)
-              : filesTotal > 0
-                ? Math.min(1, filesCompleted / filesTotal)
-                : 0,
+          progress,
+          lengthComputable: isZipProgressLengthComputable(totalBytes, filesTotal),
           filesCompleted,
           filesTotal,
         };
@@ -59,8 +74,10 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
 
         const fileBlob = await entry.getData(new BlobWriter(), {
           password: options.password,
-          onprogress: (progress: number) => {
-            loadedBytes = entryStartLoaded + progress;
+          onprogress: (compressedLoaded: number, compressedTotal: number) => {
+            const uncompressedSize = entry.uncompressedSize > 0 ? entry.uncompressedSize : 0;
+            const entryLoaded = estimateUncompressedBytesLoaded(compressedLoaded, compressedTotal, uncompressedSize);
+            loadedBytes = entryStartLoaded + entryLoaded;
             emitProgress(entry.filename);
           },
         });
@@ -85,13 +102,7 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
         emitProgress(entry.filename);
       }
 
-      if (filesTotal === 0) {
-        emitProgress();
-      } else {
-        loadedBytes = totalBytes > 0 ? totalBytes : loadedBytes;
-        filesCompleted = filesTotal;
-        emitProgress();
-      }
+      emitProgress(undefined, true);
     } catch (error) {
       throw new Error(`Failed to unzip: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
