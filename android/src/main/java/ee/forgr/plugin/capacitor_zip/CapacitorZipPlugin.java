@@ -16,9 +16,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import net.lingala.zip4j.ZipFile;
+import net.lingala.zip4j.exception.ZipException;
 import net.lingala.zip4j.model.ZipParameters;
 import net.lingala.zip4j.model.enums.CompressionLevel;
 import net.lingala.zip4j.model.enums.EncryptionMethod;
+import net.lingala.zip4j.progress.ProgressMonitor;
 
 @CapacitorPlugin(name = "CapacitorZip")
 public class CapacitorZipPlugin extends Plugin {
@@ -58,10 +60,8 @@ public class CapacitorZipPlugin extends Plugin {
             }
 
             if (password != null && !password.isEmpty()) {
-                // Use zip4j for password-protected archives
                 zipWithPassword(sourceFile, destinationFile, password, includeParentFolder);
             } else {
-                // Use standard Java zip for non-encrypted archives
                 zipWithoutPassword(sourceFile, destinationFile, includeParentFolder);
             }
 
@@ -102,10 +102,8 @@ public class CapacitorZipPlugin extends Plugin {
             }
 
             if (password != null && !password.isEmpty()) {
-                // Use zip4j for password-protected archives
                 unzipWithPassword(sourceFile, destinationDir, password);
             } else {
-                // Use standard Java unzip for non-encrypted archives
                 unzipWithoutPassword(sourceFile, destinationDir);
             }
 
@@ -126,6 +124,62 @@ public class CapacitorZipPlugin extends Plugin {
         }
     }
 
+    private void emitProgress(String operation, long loaded, long total, String currentFile, Integer filesCompleted, Integer filesTotal) {
+        JSObject data = new JSObject();
+        data.put("operation", operation);
+        data.put("loaded", loaded);
+        data.put("total", total);
+
+        double progress = 0;
+        if (total > 0) {
+            progress = Math.min(1.0, (double) loaded / total);
+        } else if (filesTotal != null && filesTotal > 0 && filesCompleted != null) {
+            progress = Math.min(1.0, (double) filesCompleted / filesTotal);
+        }
+        data.put("progress", progress);
+
+        if (currentFile != null && !currentFile.isEmpty()) {
+            data.put("currentFile", currentFile);
+        }
+        if (filesCompleted != null) {
+            data.put("filesCompleted", filesCompleted);
+        }
+        if (filesTotal != null) {
+            data.put("filesTotal", filesTotal);
+        }
+
+        notifyListeners("progress", data);
+    }
+
+    private void runZip4jWithProgress(String operation, ZipFile zipFile, Zip4jWork work) throws Exception {
+        zipFile.setRunInThread(true);
+        work.run();
+        ProgressMonitor monitor = zipFile.getProgressMonitor();
+        while (monitor.getState() == ProgressMonitor.State.BUSY) {
+            emitFromZip4jMonitor(operation, monitor);
+            Thread.sleep(16);
+        }
+        emitFromZip4jMonitor(operation, monitor);
+        if (monitor.getResult() == ProgressMonitor.Result.ERROR) {
+            Exception cause = monitor.getException();
+            if (cause instanceof Exception) {
+                throw (Exception) cause;
+            }
+            throw new ZipException(cause != null ? cause.getMessage() : "Zip operation failed");
+        }
+    }
+
+    private void emitFromZip4jMonitor(String operation, ProgressMonitor monitor) {
+        long total = monitor.getTotalWork();
+        long loaded = monitor.getWorkCompleted();
+        String fileName = monitor.getFileName();
+        emitProgress(operation, loaded, total, fileName, null, null);
+    }
+
+    private interface Zip4jWork {
+        void run() throws Exception;
+    }
+
     private void zipWithPassword(File source, File destination, String password, boolean includeParentFolder) throws Exception {
         ZipFile zipFile = new ZipFile(destination);
 
@@ -136,29 +190,33 @@ public class CapacitorZipPlugin extends Plugin {
 
         zipFile.setPassword(password.toCharArray());
 
-        if (source.isDirectory()) {
-            if (includeParentFolder) {
-                zipFile.addFolder(source, zipParameters);
-            } else {
-                // Add contents of the folder without the parent folder
-                File[] files = source.listFiles();
-                if (files != null) {
-                    Arrays.sort(files);
-                    for (File file : files) {
-                        if (file.isDirectory()) {
-                            zipFile.addFolder(file, zipParameters);
-                        } else {
-                            zipFile.addFile(file, zipParameters);
+        runZip4jWithProgress("zip", zipFile, () -> {
+            if (source.isDirectory()) {
+                if (includeParentFolder) {
+                    zipFile.addFolder(source, zipParameters);
+                } else {
+                    File[] files = source.listFiles();
+                    if (files != null) {
+                        Arrays.sort(files);
+                        for (File file : files) {
+                            if (file.isDirectory()) {
+                                zipFile.addFolder(file, zipParameters);
+                            } else {
+                                zipFile.addFile(file, zipParameters);
+                            }
                         }
                     }
                 }
+            } else {
+                zipFile.addFile(source, zipParameters);
             }
-        } else {
-            zipFile.addFile(source, zipParameters);
-        }
+        });
     }
 
     private void zipWithoutPassword(File source, File destination, boolean includeParentFolder) throws IOException {
+        CapacitorZipProgress.Stats stats = CapacitorZipProgress.computeSourceStats(source, includeParentFolder);
+        ProgressTracker tracker = new ProgressTracker("zip", stats);
+
         try (
             FileOutputStream fos = new FileOutputStream(destination);
             BufferedOutputStream bos = new BufferedOutputStream(fos);
@@ -166,42 +224,44 @@ public class CapacitorZipPlugin extends Plugin {
         ) {
             if (source.isDirectory()) {
                 if (includeParentFolder) {
-                    zipDirectory(source, source.getName(), zos);
+                    zipDirectory(source, source.getName(), zos, tracker);
                 } else {
-                    // Add contents of the folder without the parent folder
                     File[] files = source.listFiles();
                     if (files != null) {
                         Arrays.sort(files);
                         for (File file : files) {
                             if (file.isDirectory()) {
-                                zipDirectory(file, file.getName(), zos);
+                                zipDirectory(file, file.getName(), zos, tracker);
                             } else {
-                                zipFile(file, file.getName(), zos);
+                                zipFile(file, file.getName(), zos, tracker);
                             }
                         }
                     }
                 }
             } else {
-                zipFile(source, source.getName(), zos);
+                zipFile(source, source.getName(), zos, tracker);
             }
         }
+
+        tracker.emitComplete();
     }
 
-    private void zipDirectory(File directory, String parentPath, ZipOutputStream zos) throws IOException {
+    private void zipDirectory(File directory, String parentPath, ZipOutputStream zos, ProgressTracker tracker) throws IOException {
         File[] files = directory.listFiles();
         if (files == null) return;
 
         Arrays.sort(files);
         for (File file : files) {
             if (file.isDirectory()) {
-                zipDirectory(file, parentPath + "/" + file.getName(), zos);
+                zipDirectory(file, parentPath + "/" + file.getName(), zos, tracker);
             } else {
-                zipFile(file, parentPath + "/" + file.getName(), zos);
+                zipFile(file, parentPath + "/" + file.getName(), zos, tracker);
             }
         }
     }
 
-    private void zipFile(File file, String entryName, ZipOutputStream zos) throws IOException {
+    private void zipFile(File file, String entryName, ZipOutputStream zos, ProgressTracker tracker) throws IOException {
+        tracker.emitCurrentFile(entryName);
         try (FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
             ZipEntry zipEntry = new ZipEntry(entryName);
             zos.putNextEntry(zipEntry);
@@ -210,10 +270,12 @@ public class CapacitorZipPlugin extends Plugin {
             int length;
             while ((length = bis.read(buffer)) > 0) {
                 zos.write(buffer, 0, length);
+                tracker.addLoaded(length);
             }
 
             zos.closeEntry();
         }
+        tracker.completeFile();
     }
 
     static void validateZipArchive(File source) throws IOException {
@@ -230,11 +292,14 @@ public class CapacitorZipPlugin extends Plugin {
         if (zipFile.isEncrypted()) {
             zipFile.setPassword(password.toCharArray());
         }
-        zipFile.extractAll(destination.getAbsolutePath());
+        runZip4jWithProgress("unzip", zipFile, () -> zipFile.extractAll(destination.getAbsolutePath()));
     }
 
     private void unzipWithoutPassword(File source, File destination) throws IOException {
         validateZipArchive(source);
+        CapacitorZipProgress.Stats stats = CapacitorZipProgress.computeArchiveStats(source);
+        ProgressTracker tracker = new ProgressTracker("unzip", stats);
+
         try (
             FileInputStream fis = new FileInputStream(source);
             BufferedInputStream bis = new BufferedInputStream(fis);
@@ -244,9 +309,10 @@ public class CapacitorZipPlugin extends Plugin {
             byte[] buffer = new byte[8192];
 
             while ((entry = zis.getNextEntry()) != null) {
-                File newFile = new File(destination, entry.getName());
+                String entryName = entry.getName();
+                tracker.emitCurrentFile(entryName);
+                File newFile = new File(destination, entryName);
 
-                // Prevent zip slip vulnerability
                 String destDirPath = destination.getCanonicalPath();
                 String destFilePath = newFile.getCanonicalPath();
                 if (!destFilePath.startsWith(destDirPath + File.separator)) {
@@ -265,12 +331,59 @@ public class CapacitorZipPlugin extends Plugin {
                         int length;
                         while ((length = zis.read(buffer)) > 0) {
                             bos.write(buffer, 0, length);
+                            tracker.addLoaded(length);
                         }
                     }
                 }
 
                 zis.closeEntry();
+                tracker.completeFile();
             }
+        }
+
+        tracker.emitComplete();
+    }
+
+    private final class ProgressTracker {
+
+        private final String operation;
+        private final CapacitorZipProgress.Stats stats;
+        private long loaded;
+        private int filesCompleted;
+        private String currentFile;
+
+        ProgressTracker(String operation, CapacitorZipProgress.Stats stats) {
+            this.operation = operation;
+            this.stats = stats;
+        }
+
+        void emitCurrentFile(String file) {
+            this.currentFile = file;
+            emit();
+        }
+
+        void addLoaded(long bytes) {
+            loaded += bytes;
+            emit();
+        }
+
+        void completeFile() {
+            filesCompleted++;
+            emit();
+        }
+
+        void emitComplete() {
+            if (stats.totalBytes > 0) {
+                loaded = stats.totalBytes;
+            }
+            if (stats.filesTotal > 0) {
+                filesCompleted = stats.filesTotal;
+            }
+            emit();
+        }
+
+        private void emit() {
+            emitProgress(operation, loaded, stats.totalBytes, currentFile, filesCompleted, stats.filesTotal);
         }
     }
 }

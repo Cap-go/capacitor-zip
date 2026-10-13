@@ -1,3 +1,41 @@
+import type { PluginListenerHandle } from '@capacitor/core';
+
+/**
+ * Progress payload emitted on the `progress` listener during `zip` and `unzip`.
+ *
+ * @since 8.2.0
+ */
+export interface ZipProgressEvent {
+  /**
+   * Whether bytes are being compressed or extracted.
+   */
+  operation: 'zip' | 'unzip';
+  /**
+   * Bytes processed so far (uncompressed size when known).
+   */
+  loaded: number;
+  /**
+   * Total bytes for the operation when known, otherwise `0`.
+   */
+  total: number;
+  /**
+   * Ratio from `0` to `1` based on bytes when `total > 0`, otherwise file counts when available.
+   */
+  progress: number;
+  /**
+   * Path or name of the entry currently being processed.
+   */
+  currentFile?: string;
+  /**
+   * Number of archive entries completed so far.
+   */
+  filesCompleted?: number;
+  /**
+   * Total entries in the archive when known.
+   */
+  filesTotal?: number;
+}
+
 /**
  * Capacitor Zip Plugin for compressing and extracting zip archives.
  *
@@ -9,6 +47,25 @@
  * @since 7.0.0
  */
 export interface CapacitorZipPlugin {
+  /**
+   * Listen for progress updates while `zip` or `unzip` is running.
+   *
+   * Register before starting the operation. Events are best-effort on web (unzip only).
+   *
+   * @param eventName The event name (`progress`).
+   * @param listenerFunc Called with {@link ZipProgressEvent} payloads.
+   * @since 8.2.0
+   * @example
+   * ```typescript
+   * const handle = await CapacitorZip.addListener('progress', (event) => {
+   *   console.log(`${event.operation} ${Math.round(event.progress * 100)}%`, event.currentFile);
+   * });
+   * await CapacitorZip.unzip({ source, destination });
+   * await handle.remove();
+   * ```
+   */
+  addListener(eventName: 'progress', listenerFunc: (event: ZipProgressEvent) => void): Promise<PluginListenerHandle>;
+
   /**
    * Compress a file or directory to create a ZIP archive.
    *
