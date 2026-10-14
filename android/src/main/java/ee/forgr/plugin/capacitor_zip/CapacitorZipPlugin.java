@@ -210,7 +210,7 @@ public class CapacitorZipPlugin extends Plugin {
                 runZip4jWithProgress("zip", zipFile, () -> zipFile.addFolder(source, zipParameters));
             } else {
                 File[] files = source.listFiles();
-                if (files != null) {
+                if (files != null && files.length > 0) {
                     Arrays.sort(files);
                     for (File file : files) {
                         runZip4jWithProgress("zip", zipFile, () -> {
@@ -221,6 +221,8 @@ public class CapacitorZipPlugin extends Plugin {
                             }
                         });
                     }
+                } else {
+                    emitProgress("zip", 0, 0, null, null, null, true);
                 }
             }
         } else {
