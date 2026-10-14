@@ -94,6 +94,29 @@ public class CapacitorZipPluginTest {
     }
 
     @Test
+    public void zipWithoutPassword_rejectsWhenDirectoryListingFails() throws Exception {
+        File sourceDir = tempFolder.newFolder("source");
+        File destZip = new File(tempFolder.getRoot(), "out.zip");
+        sourceDir.setReadable(false, false);
+        sourceDir.setExecutable(false, false);
+
+        CapacitorZipPlugin plugin = new CapacitorZipPlugin();
+        Method zip = CapacitorZipPlugin.class.getDeclaredMethod("zipWithoutPassword", File.class, File.class, boolean.class);
+        zip.setAccessible(true);
+
+        try {
+            zip.invoke(plugin, sourceDir, destZip, false);
+            fail("Expected IOException when directory listing fails");
+        } catch (Exception e) {
+            assertTrue(e.getCause() instanceof IOException);
+            assertTrue(e.getCause().getMessage().startsWith("Failed to list directory contents:"));
+        } finally {
+            sourceDir.setReadable(true, false);
+            sourceDir.setExecutable(true, false);
+        }
+    }
+
+    @Test
     public void unzipWithoutPassword_extractsValidZip() throws Exception {
         File zipFile = createZipWithEntry("hello.txt", "hello");
         File destDir = tempFolder.newFolder("dest");

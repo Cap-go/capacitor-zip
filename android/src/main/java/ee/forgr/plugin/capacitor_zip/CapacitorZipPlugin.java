@@ -209,8 +209,8 @@ public class CapacitorZipPlugin extends Plugin {
             if (includeParentFolder) {
                 runZip4jWithProgress("zip", zipFile, () -> zipFile.addFolder(source, zipParameters));
             } else {
-                File[] files = source.listFiles();
-                if (files != null && files.length > 0) {
+                File[] files = listDirectoryEntries(source);
+                if (files.length > 0) {
                     Arrays.sort(files);
                     for (File file : files) {
                         runZip4jWithProgress("zip", zipFile, () -> {
@@ -243,15 +243,13 @@ public class CapacitorZipPlugin extends Plugin {
                 if (includeParentFolder) {
                     zipDirectory(source, source.getName(), zos, tracker);
                 } else {
-                    File[] files = source.listFiles();
-                    if (files != null) {
-                        Arrays.sort(files);
-                        for (File file : files) {
-                            if (file.isDirectory()) {
-                                zipDirectory(file, file.getName(), zos, tracker);
-                            } else {
-                                zipFile(file, file.getName(), zos, tracker);
-                            }
+                    File[] files = listDirectoryEntries(source);
+                    Arrays.sort(files);
+                    for (File file : files) {
+                        if (file.isDirectory()) {
+                            zipDirectory(file, file.getName(), zos, tracker);
+                        } else {
+                            zipFile(file, file.getName(), zos, tracker);
                         }
                     }
                 }
@@ -263,9 +261,16 @@ public class CapacitorZipPlugin extends Plugin {
         tracker.emitComplete();
     }
 
-    private void zipDirectory(File directory, String parentPath, ZipOutputStream zos, ProgressTracker tracker) throws IOException {
+    private static File[] listDirectoryEntries(File directory) throws IOException {
         File[] files = directory.listFiles();
-        if (files == null) return;
+        if (files == null) {
+            throw new IOException("Failed to list directory contents: " + directory.getAbsolutePath());
+        }
+        return files;
+    }
+
+    private void zipDirectory(File directory, String parentPath, ZipOutputStream zos, ProgressTracker tracker) throws IOException {
+        File[] files = listDirectoryEntries(directory);
 
         Arrays.sort(files);
         for (File file : files) {
