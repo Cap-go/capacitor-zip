@@ -42,7 +42,7 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
 
       await Promise.all(downloads);
     } catch (error) {
-      throw new Error(`Failed to unzip: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to unzip: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
     } finally {
       if (zipReader) {
         await zipReader.close();
