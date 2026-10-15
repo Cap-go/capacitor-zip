@@ -25,7 +25,7 @@ import net.lingala.zip4j.progress.ProgressMonitor;
 @CapacitorPlugin(name = "CapacitorZip")
 public class CapacitorZipPlugin extends Plugin {
 
-    private final String pluginVersion = "8.1.25";
+    private final String pluginVersion = "8.2.0";
 
     @PluginMethod
     public void zip(PluginCall call) {
