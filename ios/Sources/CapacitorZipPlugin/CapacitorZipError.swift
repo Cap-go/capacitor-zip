@@ -11,4 +11,6 @@ enum CapacitorZipErrorCode {
 enum CapacitorZipError: Error {
     case unsafeSymlinkTarget
     case symlinkTargetTooLarge
+    case unzipEntryFailed
+    case invalidZipPath
 }
