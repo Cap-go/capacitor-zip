@@ -84,6 +84,14 @@ public class CapacitorZip: NSObject {
 
         tracker.emitCurrentFile(archivePath)
 
+        let isSymlink = (try? itemURL.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) ?? false
+
+        if isSymlink {
+            try archive.addEntry(with: archivePath, fileURL: itemURL, bufferSize: CapacitorZipIO.bufferBytes)
+            tracker.completeFile()
+            return
+        }
+
         if isDirectory.boolValue {
             let dirPath = archivePath + "/"
             let permissions = (attributes?[.posixPermissions] as? NSNumber)?.uint16Value
@@ -105,29 +113,22 @@ public class CapacitorZip: NSObject {
             }
         } else {
             let fileSize = (try? fileManager.attributesOfItem(atPath: itemURL.path)[.size] as? NSNumber)?.int64Value ?? 0
-            let permissions = (attributes?[.posixPermissions] as? NSNumber)?.uint16Value
-            let fileHandle = try FileHandle(forReadingFrom: itemURL)
-            defer {
-                fileHandle.closeFile()
-            }
             let bufferSize = CapacitorZipIO.bufferBytes
+            let progress = Progress(totalUnitCount: max(fileSize, 1))
+            let entryStart = tracker.loaded
+            let observation = progress.observe(\.completedUnitCount, options: [.new]) { prog, _ in
+                let entryLoaded = min(fileSize, prog.completedUnitCount)
+                tracker.setLoaded(entryStart + entryLoaded)
+            }
+            defer {
+                observation.invalidate()
+            }
             try archive.addEntry(
                 with: archivePath,
-                type: .file,
-                uncompressedSize: fileSize,
-                modificationDate: modificationDate,
-                permissions: permissions,
+                fileURL: itemURL,
                 compressionMethod: .deflate,
                 bufferSize: bufferSize,
-                provider: { position, size in
-                    try fileHandle.seek(toOffset: UInt64(position))
-                    let readSize = Int(size)
-                    let data = fileHandle.readData(ofLength: readSize)
-                    if !data.isEmpty {
-                        tracker.addLoaded(Int64(data.count))
-                    }
-                    return data
-                }
+                progress: progress
             )
             tracker.completeFile()
         }

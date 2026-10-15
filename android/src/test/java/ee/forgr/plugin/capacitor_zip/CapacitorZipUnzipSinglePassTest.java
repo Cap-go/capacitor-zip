@@ -1,5 +1,6 @@
 package ee.forgr.plugin.capacitor_zip;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -36,5 +37,6 @@ public class CapacitorZipUnzipSinglePassTest {
 
         File extracted = new File(destDir, "hello.txt");
         assertTrue(extracted.exists());
+        assertEquals("hello", Files.readString(extracted.toPath()));
     }
 }
