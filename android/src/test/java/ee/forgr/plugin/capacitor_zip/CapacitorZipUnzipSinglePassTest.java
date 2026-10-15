@@ -37,6 +37,6 @@ public class CapacitorZipUnzipSinglePassTest {
 
         File extracted = new File(destDir, "hello.txt");
         assertTrue(extracted.exists());
-        assertEquals("hello", Files.readString(extracted.toPath()));
+        assertEquals("hello", new String(Files.readAllBytes(extracted.toPath()), StandardCharsets.UTF_8));
     }
 }
