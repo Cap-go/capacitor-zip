@@ -67,7 +67,7 @@ public class CapacitorZip: NSObject {
         let archive = try Archive(url: destinationURL, accessMode: .create)
 
         for itemURL in sortedContents {
-            try addItemToArchive(itemURL: itemURL, archive: archive, basePath: "", tracker: &tracker)
+            try addItemToArchive(itemURL: itemURL, archive: archive, basePath: "", tracker: tracker)
         }
     }
 
