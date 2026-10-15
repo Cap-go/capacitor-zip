@@ -23,6 +23,7 @@ Zip and unzip files in your Capacitor app for free on iOS and Android, and unzip
 - **Native libraries**: ZIPFoundation on iOS and zip4j on Android.
 - **Passwords on Android**: AES-256 encrypted archives when you pass a password.
 - **Web unzip**: `unzip()` works in the browser and downloads each file separately, without the folder structure.
+- **Progress events**: `addListener('progress', ...)` reports byte and file progress during `zip` and `unzip` (web: unzip only).
 - **Platforms**: iOS, Android and Web. `zip()` is not available on web.
 
 ## Why Capacitor Zip?
@@ -73,10 +74,28 @@ npm install @capgo/capacitor-zip
 npx cap sync
 ```
 
+### Progress listener
+
+```typescript
+import { CapacitorZip } from '@capgo/capacitor-zip';
+
+const listener = await CapacitorZip.addListener('progress', (event) => {
+  const percent = Math.round(event.progress * 100);
+  console.log(`${event.operation} ${percent}%`, event.currentFile ?? '');
+});
+
+try {
+  await CapacitorZip.zip({ source: '/path/to/folder', destination: '/path/to/archive.zip' });
+} finally {
+  await listener.remove();
+}
+```
+
 ## API
 
 <docgen-index>
 
+* [`addListener('progress', ...)`](#addlistenerprogress-)
 * [`zip(...)`](#zip)
 * [`unzip(...)`](#unzip)
 * [`getPluginVersion()`](#getpluginversion)
@@ -93,6 +112,28 @@ Provides native ZIP file operations with platform-specific implementations:
 - iOS: Uses ZIPFoundation (password protection not supported)
 - Android: Uses zip4j with AES encryption support
 - Web: Uses zip.js (unzip only, triggers downloads)
+
+### addListener('progress', ...)
+
+```typescript
+addListener(eventName: 'progress', listenerFunc: (event: ZipProgressEvent) => void) => Promise<PluginListenerHandle>
+```
+
+Listen for progress updates while `zip` or `unzip` is running.
+
+Register before starting the operation. Events are best-effort on web (unzip only).
+
+| Param              | Type                                                                              | Description                                                                                                                                        |
+| ------------------ | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'progress'</code>                                                           | The event name (`progress`).                                                                                                                       |
+| **`listenerFunc`** | <code>(event: <a href="#zipprogressevent">ZipProgressEvent</a>) =&gt; void</code> | Called with <a href="#zipprogressevent">`ZipProgressEvent`</a> payloads (includes `loaded`, `total`, and `lengthComputable` like `ProgressEvent`). |
+
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
+
+**Since:** 8.2.0
+
+--------------------
+
 
 ### zip(...)
 
@@ -163,6 +204,29 @@ major version (e.g., 7.0.0 for Capacitor 7.x).
 
 
 ### Interfaces
+
+
+#### PluginListenerHandle
+
+| Prop         | Type                                      |
+| ------------ | ----------------------------------------- |
+| **`remove`** | <code>() =&gt; Promise&lt;void&gt;</code> |
+
+
+#### ZipProgressEvent
+
+Progress payload emitted on the `progress` listener during `zip` and `unzip`.
+
+| Prop                   | Type                          | Description                                                                                                                 |
+| ---------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **`operation`**        | <code>'zip' \| 'unzip'</code> | Whether bytes are being compressed or extracted.                                                                            |
+| **`loaded`**           | <code>number</code>           | Bytes processed so far (uncompressed size when known). Same meaning as `ProgressEvent.loaded` in the Web platform.          |
+| **`total`**            | <code>number</code>           | Total bytes for the operation when known, otherwise `0`. Same meaning as `ProgressEvent.total` in the Web platform.         |
+| **`lengthComputable`** | <code>boolean</code>          | Whether `total` (or file totals) represent a known length for this operation. Aligns with `ProgressEvent.lengthComputable`. |
+| **`progress`**         | <code>number</code>           | Ratio from `0` to `1` based on bytes when `total &gt; 0`, otherwise file counts when available.                             |
+| **`currentFile`**      | <code>string</code>           | Path or name of the entry currently being processed.                                                                        |
+| **`filesCompleted`**   | <code>number</code>           | Number of archive entries completed so far.                                                                                 |
+| **`filesTotal`**       | <code>number</code>           | Total entries in the archive when known.                                                                                    |
 
 
 #### ZipOptions

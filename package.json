@@ -41,6 +41,7 @@
     "verify:ios": "xcodebuild -scheme CapgoCapacitorZip -destination generic/platform=iOS",
     "verify:android": "cd android && ./gradlew clean build test && cd ..",
     "verify:web": "npm run build",
+    "test:progress": "npm run build && node scripts/progress-unit.test.mjs",
     "lint": "npm run eslint && npm run prettier -- --check && npm run swiftlint -- lint",
     "fmt": "npm run eslint -- --fix && npm run prettier -- --write && npm run swiftlint -- --fix --format",
     "eslint": "eslint",
