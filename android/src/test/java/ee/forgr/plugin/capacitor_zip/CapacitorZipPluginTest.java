@@ -95,10 +95,19 @@ public class CapacitorZipPluginTest {
 
     @Test
     public void zipWithoutPassword_rejectsWhenDirectoryListingFails() throws Exception {
-        File sourceDir = tempFolder.newFolder("source");
+        File realDir = tempFolder.newFolder("source");
+        File sourceDir = new File(realDir.getAbsolutePath()) {
+            @Override
+            public boolean isDirectory() {
+                return true;
+            }
+
+            @Override
+            public File[] listFiles() {
+                return null;
+            }
+        };
         File destZip = new File(tempFolder.getRoot(), "out.zip");
-        sourceDir.setReadable(false, false);
-        sourceDir.setExecutable(false, false);
 
         CapacitorZipPlugin plugin = new CapacitorZipPlugin();
         Method zip = CapacitorZipPlugin.class.getDeclaredMethod("zipWithoutPassword", File.class, File.class, boolean.class);
@@ -110,9 +119,6 @@ public class CapacitorZipPluginTest {
         } catch (Exception e) {
             assertTrue(e.getCause() instanceof IOException);
             assertTrue(e.getCause().getMessage().startsWith("Failed to list directory contents:"));
-        } finally {
-            sourceDir.setReadable(true, false);
-            sourceDir.setExecutable(true, false);
         }
     }
 
