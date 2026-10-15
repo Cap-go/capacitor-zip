@@ -121,7 +121,7 @@ export interface CapacitorZipPlugin {
    * directory structure. Creates the destination directory if it doesn't exist.
    *
    * Platform-specific notes:
-   * - iOS: Supports standard ZIP archives. Password-protected archives are extracted with the provided password.
+   * - iOS: Supports standard ZIP archives. Password-protected archives are not supported; a provided password is ignored.
    * - Android: Supports AES-encrypted archives with password. Includes zip slip vulnerability protection.
    * - Web: Downloads each file individually to the browser's download folder. Cannot create a directory structure.
    *
@@ -325,7 +325,7 @@ export interface UnzipOptions {
    * is incorrect, extraction will fail with an error.
    *
    * Platform-specific notes:
-   * - iOS: Supports password-protected ZIP archives.
+   * - iOS: Password-protected ZIP archives are not supported. If a password is provided, it is ignored and a warning is logged.
    * - Android: Supports AES-encrypted archives created with zip4j or standard password-protected ZIPs.
    * - Web: Not supported. Password-protected archives cannot be extracted in the browser.
    *

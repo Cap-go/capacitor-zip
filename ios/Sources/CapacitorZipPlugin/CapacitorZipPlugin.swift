@@ -20,12 +20,12 @@ public class CapacitorZipPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func zip(_ call: CAPPluginCall) {
         guard let source = call.getString("source") else {
-            call.reject("Source path is required")
+            call.reject("Source path is required", CapacitorZipErrorCode.sourceRequired)
             return
         }
 
         guard let destination = call.getString("destination") else {
-            call.reject("Destination path is required")
+            call.reject("Destination path is required", CapacitorZipErrorCode.destinationRequired)
             return
         }
 
@@ -44,18 +44,18 @@ public class CapacitorZipPlugin: CAPPlugin, CAPBridgedPlugin {
             )
             call.resolve()
         } catch {
-            call.reject("Failed to create zip archive: \(error.localizedDescription)")
+            call.reject("Failed to create zip archive: \(error.localizedDescription)", CapacitorZipErrorCode.zipFailed)
         }
     }
 
     @objc func unzip(_ call: CAPPluginCall) {
         guard let source = call.getString("source") else {
-            call.reject("Source path is required")
+            call.reject("Source path is required", CapacitorZipErrorCode.sourceRequired)
             return
         }
 
         guard let destination = call.getString("destination") else {
-            call.reject("Destination path is required")
+            call.reject("Destination path is required", CapacitorZipErrorCode.destinationRequired)
             return
         }
 
@@ -72,7 +72,7 @@ public class CapacitorZipPlugin: CAPPlugin, CAPBridgedPlugin {
             )
             call.resolve()
         } catch {
-            call.reject("Failed to extract zip archive: \(error.localizedDescription)")
+            call.reject("Failed to extract zip archive: \(error.localizedDescription)", CapacitorZipErrorCode.unzipFailed)
         }
     }
 

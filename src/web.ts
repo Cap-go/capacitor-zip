@@ -1,5 +1,5 @@
 import { WebPlugin } from '@capacitor/core';
-import { BlobReader, BlobWriter, ZipReader } from '@zip.js/zip.js';
+import { BlobReader, BlobWriter, HttpReader, ZipReader } from '@zip.js/zip.js';
 import type { Entry } from '@zip.js/zip.js';
 
 import type { CapacitorZipPlugin, UnzipOptions, ZipOptions, ZipProgressEvent } from './definitions';
@@ -21,10 +21,14 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
     let zipReader: ZipReader<unknown> | undefined;
 
     try {
-      const response = await fetch(options.source);
-      const blob = await response.blob();
+      if (options.source.startsWith('http://') || options.source.startsWith('https://')) {
+        zipReader = new ZipReader(new HttpReader(options.source));
+      } else {
+        const response = await fetch(options.source);
+        const blob = await response.blob();
+        zipReader = new ZipReader(new BlobReader(blob));
+      }
 
-      zipReader = new ZipReader(new BlobReader(blob));
       const entries = await zipReader.getEntries();
 
       const fileEntries = entries.filter((entry: Entry) => !entry.directory);

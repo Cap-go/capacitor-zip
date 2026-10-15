@@ -42,19 +42,19 @@ public class CapacitorZip: NSObject {
         FileManager.default.fileExists(atPath: sourcePath, isDirectory: &isDirectory)
 
         let stats = try computeSourceStats(at: sourceURL, includeParentFolder: includeParentFolder, isDirectory: isDirectory.boolValue)
-        var tracker = ProgressTracker(operation: "zip", stats: stats, handler: progress)
+        let tracker = ProgressTracker(operation: "zip", stats: stats, handler: progress)
 
         if isDirectory.boolValue && !includeParentFolder {
-            try zipDirectoryContents(at: sourceURL, to: destinationURL, tracker: &tracker)
+            try zipDirectoryContents(at: sourceURL, to: destinationURL, tracker: tracker)
         } else {
             let archive = try Archive(url: destinationURL, accessMode: .create)
-            try addItemToArchive(itemURL: sourceURL, archive: archive, basePath: "", tracker: &tracker)
+            try addItemToArchive(itemURL: sourceURL, archive: archive, basePath: "", tracker: tracker)
         }
 
         tracker.emitComplete()
     }
 
-    private func zipDirectoryContents(at sourceURL: URL, to destinationURL: URL, tracker: inout ProgressTracker) throws {
+    private func zipDirectoryContents(at sourceURL: URL, to destinationURL: URL, tracker: ProgressTracker) throws {
         let fileManager = FileManager.default
         let contents = try fileManager.contentsOfDirectory(at: sourceURL, includingPropertiesForKeys: nil)
 
@@ -71,7 +71,7 @@ public class CapacitorZip: NSObject {
         }
     }
 
-    private func addItemToArchive(itemURL: URL, archive: Archive, basePath: String, tracker: inout ProgressTracker) throws {
+    private func addItemToArchive(itemURL: URL, archive: Archive, basePath: String, tracker: ProgressTracker) throws {
         let fileManager = FileManager.default
         var isDirectory: ObjCBool = false
         fileManager.fileExists(atPath: itemURL.path, isDirectory: &isDirectory)
@@ -105,8 +105,31 @@ public class CapacitorZip: NSObject {
             }
         } else {
             let fileSize = (try? fileManager.attributesOfItem(atPath: itemURL.path)[.size] as? NSNumber)?.int64Value ?? 0
-            try archive.addEntry(with: archivePath, fileURL: itemURL)
-            tracker.completeFile(bytes: fileSize)
+            let permissions = (attributes?[.posixPermissions] as? NSNumber)?.uint16Value
+            let fileHandle = try FileHandle(forReadingFrom: itemURL)
+            defer {
+                fileHandle.closeFile()
+            }
+            let bufferSize = CapacitorZipIO.bufferBytes
+            try archive.addEntry(
+                with: archivePath,
+                type: .file,
+                uncompressedSize: fileSize,
+                modificationDate: modificationDate,
+                permissions: permissions,
+                compressionMethod: .deflate,
+                bufferSize: bufferSize,
+                provider: { position, size in
+                    try fileHandle.seek(toOffset: UInt64(position))
+                    let readSize = Int(size)
+                    let data = fileHandle.readData(ofLength: readSize)
+                    if !data.isEmpty {
+                        tracker.addLoaded(Int64(data.count))
+                    }
+                    return data
+                }
+            )
+            tracker.completeFile()
         }
     }
 
@@ -186,27 +209,39 @@ struct ProgressStats {
     var filesTotal: Int = 0
 }
 
-struct ProgressTracker {
+final class ProgressTracker {
     let operation: String
     let stats: ProgressStats
     let handler: CapacitorZipProgressHandler?
+
+    private let throttle = CapacitorZipProgressThrottle()
 
     var loaded: Int64 = 0
     var filesCompleted: Int = 0
     var currentFile: String?
 
-    mutating func emitCurrentFile(_ file: String) {
+    init(operation: String, stats: ProgressStats, handler: CapacitorZipProgressHandler?) {
+        self.operation = operation
+        self.stats = stats
+        self.handler = handler
+    }
+
+    func emitCurrentFile(_ file: String) {
         currentFile = file
         emit()
     }
 
-    mutating func completeFile(bytes: Int64) {
+    func addLoaded(_ bytes: Int64) {
         loaded += bytes
+        emit()
+    }
+
+    func completeFile() {
         filesCompleted += 1
         emit()
     }
 
-    mutating func emitComplete() {
+    func emitComplete() {
         if stats.totalBytes > 0 {
             loaded = stats.totalBytes
         }
@@ -226,6 +261,11 @@ struct ProgressTracker {
             filesTotal: stats.filesTotal,
             operationComplete: operationComplete
         )
+        if !throttle.shouldEmit(progress: progress, force: operationComplete) {
+            return
+        }
+        throttle.recordEmit(progress: progress)
+
         let lengthComputable = stats.totalBytes > 0 || stats.filesTotal > 0
 
         var payload: [String: Any] = [
