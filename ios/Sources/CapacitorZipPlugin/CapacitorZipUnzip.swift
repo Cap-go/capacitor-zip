@@ -63,29 +63,18 @@ enum CapacitorZipUnzip {
         bufferSize: Int,
         tracker: ProgressTracker
     ) throws -> CRC32 {
-        let fileManager = FileManager.default
-        if CapacitorZipUnzip.itemExistsWithoutFollowingLink(at: entryURL) {
-            try fileManager.removeItem(at: entryURL)
+        let entryStart = tracker.loaded
+        let totalUnits = max(entry.uncompressedSize, 1)
+        let progress = Progress(totalUnitCount: Int64(totalUnits))
+        let observation = progress.observe(\.completedUnitCount, options: [.new]) { prog, _ in
+            let entryLoaded = min(Int64(entry.uncompressedSize), prog.completedUnitCount)
+            tracker.setLoaded(entryStart + entryLoaded)
         }
-        try fileManager.createParentDirectoryStructure(for: entryURL)
-
-        guard fileManager.createFile(atPath: entryURL.path, contents: nil) else {
-            throw CocoaError(.fileWriteUnknown, userInfo: [NSFilePathErrorKey: entryURL.path])
-        }
-
-        let fileHandle = try FileHandle(forWritingTo: entryURL)
         defer {
-            fileHandle.closeFile()
+            observation.invalidate()
         }
 
-        let crc32 = try archive.extract(entry, bufferSize: bufferSize) { data in
-            if !data.isEmpty {
-                fileHandle.write(data)
-                tracker.addLoaded(Int64(data.count))
-            }
-        }
-        try fileManager.transferAttributes(from: entry, toItemAtURL: entryURL)
-        return crc32
+        return try archive.extract(entry, to: entryURL, bufferSize: bufferSize, progress: progress)
     }
 
     private static func extractSymlink(

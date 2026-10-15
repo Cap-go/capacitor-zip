@@ -101,7 +101,7 @@ public class CapacitorZip: NSObject {
             let contents = try fileManager.contentsOfDirectory(at: itemURL, includingPropertiesForKeys: nil)
             let sortedContents = contents.sorted { $0.lastPathComponent < $1.lastPathComponent }
             for subItemURL in sortedContents {
-                try addItemToArchive(itemURL: subItemURL, archive: archive, basePath: archivePath, tracker: &tracker)
+                try addItemToArchive(itemURL: subItemURL, archive: archive, basePath: archivePath, tracker: tracker)
             }
         } else {
             let fileSize = (try? fileManager.attributesOfItem(atPath: itemURL.path)[.size] as? NSNumber)?.int64Value ?? 0
@@ -233,6 +233,11 @@ final class ProgressTracker {
 
     func addLoaded(_ bytes: Int64) {
         loaded += bytes
+        emit()
+    }
+
+    func setLoaded(_ bytes: Int64) {
+        loaded = bytes
         emit()
     }
 
