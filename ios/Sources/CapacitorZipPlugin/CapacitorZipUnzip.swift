@@ -1,51 +1,127 @@
 import Foundation
-import ZIPFoundation
 
-/// Unzips using the same behavior as `FileManager.unzipItem`, with an `autoreleasepool` per entry
-/// to avoid retaining autoreleased objects across many small files (ZIPFoundation #391, Cap-go/capacitor-zip #11).
+/// Unzips with the in-repo `ZipArchiveReader`, updater-style path guards, and byte-level progress.
 enum CapacitorZipUnzip {
     static func unzipItem(at sourceURL: URL, to destinationURL: URL, progress: CapacitorZipProgressHandler? = nil) throws {
-        let fileManager = FileManager()
-        guard fileManager.itemExists(at: sourceURL) else {
+        let fileManager = FileManager.default
+        guard (try? sourceURL.checkResourceIsReachable()) == true else {
             throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: sourceURL.path])
         }
 
-        let archive = try Archive(url: sourceURL, accessMode: .read)
-        let entries = Array(archive)
+        let bufferSize = CapacitorZipIO.bufferBytes
+        let archive = try ZipArchiveReader(url: sourceURL)
+
         var stats = ProgressStats()
-        stats.filesTotal = entries.count
-        for entry in entries {
+        for entry in archive.entries {
+            stats.filesTotal += 1
             if entry.type == .file {
                 stats.totalBytes += Int64(entry.uncompressedSize)
             }
         }
 
-        var tracker = ProgressTracker(operation: "unzip", stats: stats, handler: progress)
+        let tracker = ProgressTracker(operation: "unzip", stats: stats, handler: progress)
 
-        for entry in entries {
+        if !fileManager.fileExists(atPath: destinationURL.path) {
+            try fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true, attributes: nil)
+        }
+
+        for entry in archive.entries {
             try autoreleasepool {
                 tracker.emitCurrentFile(entry.path)
-                let entryURL = destinationURL.appendingPathComponent(entry.path)
-                guard entryURL.isContained(in: destinationURL) else {
-                    throw CocoaError(.fileReadInvalidFileName, userInfo: [NSFilePathErrorKey: entryURL.path])
+                let destPath: URL
+                do {
+                    destPath = try CapacitorZipSecurePath.resolvePathInsideDirectory(
+                        baseDirectory: destinationURL,
+                        relativePath: entry.path
+                    )
+                } catch {
+                    throw CocoaError(.fileReadInvalidFileName, userInfo: [NSFilePathErrorKey: entry.path])
                 }
 
-                let crc32 = try archive.extract(entry, to: entryURL)
-                if crc32 != entry.checksum {
-                    throw Archive.ArchiveError.invalidCRC32
-                }
+                try CapacitorZipSecurePath.assertPhysicallyInsideDirectory(
+                    destPath.deletingLastPathComponent(),
+                    root: destinationURL
+                )
 
-                let bytes: Int64 = entry.type == .file ? Int64(entry.uncompressedSize) : 0
-                tracker.completeFile(bytes: bytes)
+                try extractZipEntry(
+                    archive: archive,
+                    entry: entry,
+                    to: destPath,
+                    bufferSize: bufferSize,
+                    tracker: tracker
+                )
+                tracker.completeFile()
             }
         }
 
         tracker.emitComplete()
     }
-}
 
-private extension FileManager {
-    func itemExists(at url: URL) -> Bool {
-        (try? url.checkResourceIsReachable()) == true
+    private static func extractZipEntry(
+        archive: ZipArchiveReader,
+        entry: ZipEntry,
+        to destPath: URL,
+        bufferSize: Int,
+        tracker: ProgressTracker
+    ) throws {
+        let fileManager = FileManager.default
+
+        switch entry.type {
+        case .directory:
+            try fileManager.createDirectory(at: destPath, withIntermediateDirectories: true, attributes: nil)
+        case .file:
+            let parentDir = destPath.deletingLastPathComponent()
+            try fileManager.createDirectory(at: parentDir, withIntermediateDirectories: true, attributes: nil)
+
+            if CapacitorZipSecurePath.itemExistsWithoutFollowingLink(at: destPath) {
+                try fileManager.removeItem(at: destPath)
+            }
+
+            guard fileManager.createFile(atPath: destPath.path, contents: nil) else {
+                throw CapacitorZipError.unzipEntryFailed
+            }
+
+            let fileHandle = try FileHandle(forWritingTo: destPath)
+            defer {
+                fileHandle.closeFile()
+            }
+
+            try archive.extract(entry, bufferSize: bufferSize) { data in
+                if !data.isEmpty {
+                    fileHandle.write(data)
+                    tracker.addLoaded(Int64(data.count))
+                }
+            }
+        case .symlink:
+            let linkData = try archive.readSmallEntry(
+                entry,
+                maxBytes: CapacitorZipSecurePath.maxZipSymlinkTargetBytes,
+                bufferSize: bufferSize
+            )
+
+            guard let linkPath = String(data: linkData, encoding: .utf8),
+                  CapacitorZipSecurePath.isSafeZipSymlinkTarget(linkPath) else {
+                throw CapacitorZipError.unsafeSymlinkTarget
+            }
+
+            let parentDir = destPath.deletingLastPathComponent()
+            try fileManager.createDirectory(at: parentDir, withIntermediateDirectories: true, attributes: nil)
+
+            let isAbsolutePath = (linkPath as NSString).isAbsolutePath
+            let linkURL = URL(fileURLWithPath: linkPath, relativeTo: isAbsolutePath ? nil : parentDir)
+            let canonicalPath = linkURL.standardizedFileURL.path
+            let canonicalDir = parentDir.standardizedFileURL.path
+            let normalizedDir = canonicalDir.hasSuffix("/") ? canonicalDir : "\(canonicalDir)/"
+
+            if canonicalPath != canonicalDir && !canonicalPath.hasPrefix(normalizedDir) {
+                throw CapacitorZipError.unsafeSymlinkTarget
+            }
+
+            if CapacitorZipSecurePath.itemExistsWithoutFollowingLink(at: destPath) {
+                try fileManager.removeItem(at: destPath)
+            }
+
+            try fileManager.createSymbolicLink(atPath: destPath.path, withDestinationPath: linkPath)
+        }
     }
 }

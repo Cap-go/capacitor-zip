@@ -1,6 +1,6 @@
 import { WebPlugin } from '@capacitor/core';
-import { BlobReader, BlobWriter, ZipReader } from '@zip.js/zip.js';
-import type { Entry } from '@zip.js/zip.js';
+import { BlobReader, BlobWriter, HttpRangeReader, HttpReader, ZipReader } from '@zip.js/zip.js';
+import type { Entry, HttpOptions } from '@zip.js/zip.js';
 
 import type { CapacitorZipPlugin, UnzipOptions, ZipOptions, ZipProgressEvent } from './definitions';
 import {
@@ -9,6 +9,12 @@ import {
   isZipProgressLengthComputable,
   ZipProgressEmitThrottle,
 } from './progress';
+
+const httpReaderOptions: HttpOptions = { preventHeadRequest: true };
+
+function createHttpZipReader(source: string): ZipReader<unknown> {
+  return new ZipReader(new HttpRangeReader(source, httpReaderOptions));
+}
 
 export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
   async zip(_options: ZipOptions): Promise<void> {
@@ -21,11 +27,22 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
     let zipReader: ZipReader<unknown> | undefined;
 
     try {
-      const response = await fetch(options.source);
-      const blob = await response.blob();
-
-      zipReader = new ZipReader(new BlobReader(blob));
-      const entries = await zipReader.getEntries();
+      let entries: Entry[];
+      if (options.source.startsWith('http://') || options.source.startsWith('https://')) {
+        zipReader = createHttpZipReader(options.source);
+        try {
+          entries = await zipReader.getEntries();
+        } catch {
+          await zipReader.close().catch(() => undefined);
+          zipReader = new ZipReader(new HttpReader(options.source, httpReaderOptions));
+          entries = await zipReader.getEntries();
+        }
+      } else {
+        const response = await fetch(options.source);
+        const blob = await response.blob();
+        zipReader = new ZipReader(new BlobReader(blob));
+        entries = await zipReader.getEntries();
+      }
 
       const fileEntries = entries.filter((entry: Entry) => !entry.directory);
       const filesTotal = fileEntries.length;

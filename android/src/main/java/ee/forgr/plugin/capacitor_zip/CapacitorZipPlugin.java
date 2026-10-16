@@ -11,9 +11,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
@@ -35,12 +36,12 @@ public class CapacitorZipPlugin extends Plugin {
         Boolean includeParentFolder = call.getBoolean("includeParentFolder", true);
 
         if (source == null || source.isEmpty()) {
-            call.reject("Source path is required");
+            call.reject("Source path is required", CapacitorZipErrorCode.SOURCE_REQUIRED);
             return;
         }
 
         if (destination == null || destination.isEmpty()) {
-            call.reject("Destination path is required");
+            call.reject("Destination path is required", CapacitorZipErrorCode.DESTINATION_REQUIRED);
             return;
         }
 
@@ -67,7 +68,7 @@ public class CapacitorZipPlugin extends Plugin {
 
             call.resolve();
         } catch (Exception e) {
-            call.reject("Failed to create zip archive: " + e.getMessage(), e);
+            call.reject("Failed to create zip archive: " + e.getMessage(), CapacitorZipErrorCode.ZIP_FAILED, e);
         }
     }
 
@@ -78,12 +79,12 @@ public class CapacitorZipPlugin extends Plugin {
         String password = call.getString("password");
 
         if (source == null || source.isEmpty()) {
-            call.reject("Source path is required");
+            call.reject("Source path is required", CapacitorZipErrorCode.SOURCE_REQUIRED);
             return;
         }
 
         if (destination == null || destination.isEmpty()) {
-            call.reject("Destination path is required");
+            call.reject("Destination path is required", CapacitorZipErrorCode.DESTINATION_REQUIRED);
             return;
         }
 
@@ -109,7 +110,7 @@ public class CapacitorZipPlugin extends Plugin {
 
             call.resolve();
         } catch (Exception e) {
-            call.reject("Failed to extract zip archive: " + e.getMessage(), e);
+            call.reject("Failed to extract zip archive: " + e.getMessage(), CapacitorZipErrorCode.UNZIP_FAILED, e);
         }
     }
 
@@ -288,7 +289,7 @@ public class CapacitorZipPlugin extends Plugin {
             ZipEntry zipEntry = new ZipEntry(entryName);
             zos.putNextEntry(zipEntry);
 
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[CapacitorZipIO.BUFFER_BYTES];
             int length;
             while ((length = bis.read(buffer)) > 0) {
                 zos.write(buffer, 0, length);
@@ -301,10 +302,10 @@ public class CapacitorZipPlugin extends Plugin {
     }
 
     static void validateZipArchive(File source) throws IOException {
-        try (ZipFile zipFile = new ZipFile(source)) {
-            if (!zipFile.isValidZipFile()) {
-                throw new IOException("Invalid or corrupt zip file");
-            }
+        try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(source)) {
+            zipFile.entries();
+        } catch (java.util.zip.ZipException e) {
+            throw new IOException("Invalid or corrupt zip file", e);
         }
     }
 
@@ -318,19 +319,24 @@ public class CapacitorZipPlugin extends Plugin {
     }
 
     private void unzipWithoutPassword(File source, File destination) throws IOException {
-        validateZipArchive(source);
-        CapacitorZipProgress.Stats stats = CapacitorZipProgress.computeArchiveStats(source);
-        ProgressTracker tracker = new ProgressTracker("unzip", stats);
+        try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(source)) {
+            CapacitorZipProgress.Stats stats = new CapacitorZipProgress.Stats();
+            List<ZipEntry> entryList = new ArrayList<>();
+            java.util.Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                entryList.add(entry);
+                stats.filesTotal++;
+                long size = entry.getSize();
+                if (size > 0) {
+                    stats.totalBytes += size;
+                }
+            }
 
-        try (
-            FileInputStream fis = new FileInputStream(source);
-            BufferedInputStream bis = new BufferedInputStream(fis);
-            ZipInputStream zis = new ZipInputStream(bis)
-        ) {
-            ZipEntry entry;
-            byte[] buffer = new byte[8192];
+            ProgressTracker tracker = new ProgressTracker("unzip", stats);
+            byte[] buffer = new byte[CapacitorZipIO.BUFFER_BYTES];
 
-            while ((entry = zis.getNextEntry()) != null) {
+            for (ZipEntry entry : entryList) {
                 String entryName = entry.getName();
                 tracker.emitCurrentFile(entryName);
                 File newFile = new File(destination, entryName);
@@ -343,27 +349,34 @@ public class CapacitorZipPlugin extends Plugin {
 
                 if (entry.isDirectory()) {
                     newFile.mkdirs();
-                } else {
-                    File parent = newFile.getParentFile();
-                    if (parent != null && !parent.exists()) {
-                        parent.mkdirs();
-                    }
-
-                    try (FileOutputStream fos = new FileOutputStream(newFile); BufferedOutputStream bos = new BufferedOutputStream(fos)) {
-                        int length;
-                        while ((length = zis.read(buffer)) > 0) {
-                            bos.write(buffer, 0, length);
-                            tracker.addLoaded(length);
-                        }
-                    }
+                    tracker.completeFile();
+                    continue;
                 }
 
-                zis.closeEntry();
+                File parent = newFile.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    parent.mkdirs();
+                }
+
+                try (
+                    java.io.InputStream entryStream = zipFile.getInputStream(entry);
+                    BufferedInputStream bis = new BufferedInputStream(entryStream);
+                    FileOutputStream fos = new FileOutputStream(newFile);
+                    BufferedOutputStream bos = new BufferedOutputStream(fos)
+                ) {
+                    int length;
+                    while ((length = bis.read(buffer)) > 0) {
+                        bos.write(buffer, 0, length);
+                        tracker.addLoaded(length);
+                    }
+                }
                 tracker.completeFile();
             }
-        }
 
-        tracker.emitComplete();
+            tracker.emitComplete();
+        } catch (java.util.zip.ZipException e) {
+            throw new IOException("Invalid or corrupt zip file", e);
+        }
     }
 
     private final class ProgressTracker {
