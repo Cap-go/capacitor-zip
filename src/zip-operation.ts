@@ -8,6 +8,20 @@ export type UnzipNativeCallOptions = Omit<UnzipOptions, 'onProgress'> & { operat
 type ZipCallOptions = ZipOptions & { operationId?: string };
 type UnzipCallOptions = UnzipOptions & { operationId?: string };
 
+export function wrapCapacitorZipPlugin(plugin: CapacitorZipPlugin): CapacitorZipPlugin {
+  return new Proxy(plugin, {
+    get(target, prop, receiver) {
+      if (prop === 'zip') {
+        return (options: ZipOptions) => runZipOrUnzip(plugin, 'zip', options);
+      }
+      if (prop === 'unzip') {
+        return (options: UnzipOptions) => runZipOrUnzip(plugin, 'unzip', options);
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  }) as CapacitorZipPlugin;
+}
+
 export function createZipOperationId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();

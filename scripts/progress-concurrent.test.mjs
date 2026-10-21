@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { runZipOrUnzip } from '../dist/esm/zip-operation.js';
+import { runZipOrUnzip, wrapCapacitorZipPlugin } from '../dist/esm/zip-operation.js';
 
 function createMockPlugin(behavior) {
   const listeners = new Set();
@@ -176,6 +176,37 @@ await (async () => {
   );
 
   assert.equal(listenerCount, 1);
+  assert.equal(plugin.listeners.size, 0);
+})();
+
+await (async () => {
+  const native = createMockPlugin({
+    zip: async (options) => {
+      plugin.emit({
+        ...baseEvent,
+        operationId: options.operationId,
+        source: options.source,
+        destination: options.destination,
+      });
+    },
+    unzip: async () => {},
+  });
+  const plugin = native;
+  native.getPluginVersion = () => '8.2.1';
+  native.removeAllListeners = () => Promise.resolve();
+
+  const CapacitorZip = wrapCapacitorZipPlugin(native);
+  assert.equal(CapacitorZip.getPluginVersion(), '8.2.1');
+
+  const events = [];
+  await CapacitorZip.zip({
+    source: '/entry-src',
+    destination: '/entry.zip',
+    operationId: 'entry-op',
+    onProgress: (event) => events.push(event.operationId),
+  });
+
+  assert.deepEqual(events, ['entry-op']);
   assert.equal(plugin.listeners.size, 0);
 })();
 
