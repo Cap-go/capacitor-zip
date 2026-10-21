@@ -2,7 +2,12 @@ import Foundation
 
 /// Unzips with the in-repo `ZipArchiveReader`, updater-style path guards, and byte-level progress.
 enum CapacitorZipUnzip {
-    static func unzipItem(at sourceURL: URL, to destinationURL: URL, progress: CapacitorZipProgressHandler? = nil) throws {
+    static func unzipItem(
+        at sourceURL: URL,
+        to destinationURL: URL,
+        metadata: CapacitorZipProgressMetadata,
+        progress: CapacitorZipProgressHandler? = nil
+    ) throws {
         let fileManager = FileManager.default
         guard (try? sourceURL.checkResourceIsReachable()) == true else {
             throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: sourceURL.path])
@@ -19,7 +24,7 @@ enum CapacitorZipUnzip {
             }
         }
 
-        let tracker = ProgressTracker(operation: "unzip", stats: stats, handler: progress)
+        let tracker = ProgressTracker(operation: "unzip", stats: stats, metadata: metadata, handler: progress)
 
         if !fileManager.fileExists(atPath: destinationURL.path) {
             try fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true, attributes: nil)

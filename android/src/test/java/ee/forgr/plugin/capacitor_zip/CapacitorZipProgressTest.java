@@ -47,6 +47,22 @@ public class CapacitorZipProgressTest {
     }
 
     @Test
+    public void eventContext_storesOperationMetadata() {
+        CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext("op-1", "/src", "/dest.zip");
+        assertEquals("op-1", context.operationId);
+        assertEquals("/src", context.source);
+        assertEquals("/dest.zip", context.destination);
+    }
+
+    @Test
+    public void eventContext_nullFieldsBecomeEmptyStrings() {
+        CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext(null, null, null);
+        assertEquals("", context.operationId);
+        assertEquals("", context.source);
+        assertEquals("", context.destination);
+    }
+
+    @Test
     public void computeArchiveStats_countsZipEntries() throws Exception {
         File zip = createZipWithEntry("hello.txt", "hello");
 

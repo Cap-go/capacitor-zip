@@ -24,7 +24,8 @@ final class CapacitorZipUnzipSymlinkTests: XCTestCase {
             let dest = root.appendingPathComponent("dest-\(index)", isDirectory: true)
             try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
 
-            XCTAssertThrowsError(try CapacitorZipUnzip.unzipItem(at: zipURL, to: dest))
+            let metadata = CapacitorZipProgressMetadata(operationId: "test", source: zipURL.path, destination: dest.path)
+            XCTAssertThrowsError(try CapacitorZipUnzip.unzipItem(at: zipURL, to: dest, metadata: metadata))
         }
     }
 
@@ -37,7 +38,8 @@ final class CapacitorZipUnzipSymlinkTests: XCTestCase {
         let dest = root.appendingPathComponent("dest-safe", isDirectory: true)
         try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: true)
 
-        try CapacitorZipUnzip.unzipItem(at: zipURL, to: dest)
+        let metadata = CapacitorZipProgressMetadata(operationId: "test", source: zipURL.path, destination: dest.path)
+        try CapacitorZipUnzip.unzipItem(at: zipURL, to: dest, metadata: metadata)
         let linkPath = dest.appendingPathComponent("assets/alias.js")
         XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: linkPath.path), "app.js")
     }

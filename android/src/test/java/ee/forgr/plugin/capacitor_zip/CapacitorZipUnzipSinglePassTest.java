@@ -31,9 +31,14 @@ public class CapacitorZipUnzipSinglePassTest {
 
         File destDir = tempFolder.newFolder("dest");
         CapacitorZipPlugin plugin = new CapacitorZipPlugin();
-        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithoutPassword", File.class, File.class);
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod(
+            "unzipWithoutPassword",
+            File.class,
+            File.class,
+            CapacitorZipProgress.EventContext.class
+        );
         unzip.setAccessible(true);
-        unzip.invoke(plugin, zipFile, destDir);
+        unzip.invoke(plugin, zipFile, destDir, new CapacitorZipProgress.EventContext("test", zipFile.getPath(), destDir.getPath()));
 
         File extracted = new File(destDir, "hello.txt");
         assertTrue(extracted.exists());

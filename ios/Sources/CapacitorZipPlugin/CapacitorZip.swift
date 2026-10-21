@@ -16,6 +16,29 @@ public class CapacitorZip: NSObject {
         includeParentFolder: Bool = true,
         progress: CapacitorZipProgressHandler? = nil
     ) throws {
+        let progressMetadata = CapacitorZipProgressMetadata(
+            operationId: "",
+            source: source,
+            destination: destination
+        )
+        try self.zip(
+            source: source,
+            destination: destination,
+            password: password,
+            includeParentFolder: includeParentFolder,
+            progressMetadata: progressMetadata,
+            progress: progress
+        )
+    }
+
+    public func zip(
+        source: String,
+        destination: String,
+        password: String? = nil,
+        includeParentFolder: Bool = true,
+        progressMetadata: CapacitorZipProgressMetadata,
+        progress: CapacitorZipProgressHandler? = nil
+    ) throws {
         let sourcePath = CapacitorZipPath.resolveFilesystemPath(source)
         let destinationPath = CapacitorZipPath.resolveFilesystemPath(destination)
         let sourceURL = URL(fileURLWithPath: sourcePath)
@@ -42,7 +65,7 @@ public class CapacitorZip: NSObject {
         FileManager.default.fileExists(atPath: sourcePath, isDirectory: &isDirectory)
 
         let stats = try computeSourceStats(at: sourceURL, includeParentFolder: includeParentFolder, isDirectory: isDirectory.boolValue)
-        let tracker = ProgressTracker(operation: "zip", stats: stats, handler: progress)
+        let tracker = ProgressTracker(operation: "zip", stats: stats, metadata: progressMetadata, handler: progress)
 
         if isDirectory.boolValue && !includeParentFolder {
             try zipDirectoryContents(at: sourceURL, to: destinationURL, tracker: tracker)
@@ -140,6 +163,27 @@ public class CapacitorZip: NSObject {
         password: String? = nil,
         progress: CapacitorZipProgressHandler? = nil
     ) throws {
+        let progressMetadata = CapacitorZipProgressMetadata(
+            operationId: "",
+            source: source,
+            destination: destination
+        )
+        try self.unzip(
+            source: source,
+            destination: destination,
+            password: password,
+            progressMetadata: progressMetadata,
+            progress: progress
+        )
+    }
+
+    public func unzip(
+        source: String,
+        destination: String,
+        password: String? = nil,
+        progressMetadata: CapacitorZipProgressMetadata,
+        progress: CapacitorZipProgressHandler? = nil
+    ) throws {
         let sourcePath = CapacitorZipPath.resolveFilesystemPath(source)
         let destinationPath = CapacitorZipPath.resolveFilesystemPath(destination)
         let sourceURL = URL(fileURLWithPath: sourcePath)
@@ -157,7 +201,7 @@ public class CapacitorZip: NSObject {
             try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true, attributes: nil)
         }
 
-        try CapacitorZipUnzip.unzipItem(at: sourceURL, to: destinationURL, progress: progress)
+        try CapacitorZipUnzip.unzipItem(at: sourceURL, to: destinationURL, metadata: progressMetadata, progress: progress)
     }
 
     private func computeSourceStats(at sourceURL: URL, includeParentFolder: Bool, isDirectory: Bool) throws -> ProgressStats {
@@ -213,6 +257,7 @@ struct ProgressStats {
 final class ProgressTracker {
     let operation: String
     let stats: ProgressStats
+    let metadata: CapacitorZipProgressMetadata
     let handler: CapacitorZipProgressHandler?
 
     private let throttle = CapacitorZipProgressThrottle()
@@ -221,9 +266,10 @@ final class ProgressTracker {
     var filesCompleted: Int = 0
     var currentFile: String?
 
-    init(operation: String, stats: ProgressStats, handler: CapacitorZipProgressHandler?) {
+    init(operation: String, stats: ProgressStats, metadata: CapacitorZipProgressMetadata, handler: CapacitorZipProgressHandler?) {
         self.operation = operation
         self.stats = stats
+        self.metadata = metadata
         self.handler = handler
     }
 
@@ -275,6 +321,9 @@ final class ProgressTracker {
         let lengthComputable = stats.totalBytes > 0 || stats.filesTotal > 0
 
         var payload: [String: Any] = [
+            "operationId": metadata.operationId,
+            "source": metadata.source,
+            "destination": metadata.destination,
             "operation": operation,
             "loaded": loaded,
             "total": stats.totalBytes,

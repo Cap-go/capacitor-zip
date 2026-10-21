@@ -7,6 +7,26 @@ import type { PluginListenerHandle } from '@capacitor/core';
  */
 export interface ZipProgressEvent {
   /**
+   * Unique id for the `zip` or `unzip` call that produced this event.
+   *
+   * Use this to distinguish concurrent operations when using `addListener`.
+   *
+   * @since 8.3.0
+   */
+  operationId?: string;
+  /**
+   * `source` path from the `zip` or `unzip` options for this operation.
+   *
+   * @since 8.3.0
+   */
+  source?: string;
+  /**
+   * `destination` path from the `zip` or `unzip` options for this operation.
+   *
+   * @since 8.3.0
+   */
+  destination?: string;
+  /**
    * Whether bytes are being compressed or extracted.
    */
   operation: 'zip' | 'unzip';
@@ -61,6 +81,8 @@ export interface CapacitorZipPlugin {
    * Listen for progress updates while `zip` or `unzip` is running.
    *
    * Register before starting the operation. Events are best-effort on web (unzip only).
+   * Each event includes `operationId`, `source`, and `destination` so you can filter when several operations run at once.
+   * Pass a unique `operationId` per call if you supply your own.
    *
    * @param eventName The event name (`progress`).
    * @param listenerFunc Called with `ZipProgressEvent` payloads (includes `loaded`, `total`, and `lengthComputable` like `ProgressEvent`).
@@ -266,6 +288,24 @@ export interface ZipOptions {
    * ```
    */
   includeParentFolder?: boolean;
+
+  /**
+   * Called with progress updates for this zip operation only.
+   *
+   * Prefer this over `addListener('progress')` when running multiple operations at once.
+   * The listener is registered and removed automatically.
+   *
+   * @since 8.3.0
+   */
+  onProgress?: (event: ZipProgressEvent) => void;
+
+  /**
+   * Optional operation id. If supplied, it must be unique among concurrent `zip` and `unzip` calls.
+   * An id is generated automatically when omitted.
+   *
+   * @since 8.3.0
+   */
+  operationId?: string;
 }
 
 /**
@@ -333,4 +373,23 @@ export interface UnzipOptions {
    * @example 'mySecurePassword123'
    */
   password?: string;
+
+  /**
+   * Called with progress updates for this unzip operation only.
+   *
+   * Events are best-effort on web (unzip only).
+   * Prefer this over `addListener('progress')` when running multiple operations at once.
+   * The listener is registered and removed automatically.
+   *
+   * @since 8.3.0
+   */
+  onProgress?: (event: ZipProgressEvent) => void;
+
+  /**
+   * Optional operation id. If supplied, it must be unique among concurrent `zip` and `unzip` calls.
+   * An id is generated automatically when omitted.
+   *
+   * @since 8.3.0
+   */
+  operationId?: string;
 }
