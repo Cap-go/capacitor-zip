@@ -48,13 +48,22 @@ public class CapacitorZipProgressTest {
     }
 
     @Test
-    public void buildProgressEvent_includesOperationMetadata() throws Exception {
+    public void eventContext_storesOperationMetadata() {
+        CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext("op-1", "/src", "/dest.zip");
+        assertEquals("op-1", context.operationId);
+        assertEquals("/src", context.source);
+        assertEquals("/dest.zip", context.destination);
+    }
+
+    @Test
+    public void buildProgressEvent_includesOperationMetadata() {
         CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext("op-1", "/src", "/dest.zip");
         JSObject data = CapacitorZipProgress.buildProgressEvent(context, "zip", 1, 10, "file.txt", 1, 5, false);
-        assertEquals("op-1", data.get("operationId"));
-        assertEquals("/src", data.get("source"));
-        assertEquals("/dest.zip", data.get("destination"));
-        assertEquals("zip", data.get("operation"));
+        String json = data.toString();
+        assertTrue(json.contains("\"operationId\":\"op-1\""));
+        assertTrue(json.contains("\"source\":\"/src\""));
+        assertTrue(json.contains("\"destination\":\"/dest.zip\""));
+        assertTrue(json.contains("\"operation\":\"zip\""));
     }
 
     @Test
