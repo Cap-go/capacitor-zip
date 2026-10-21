@@ -31,6 +31,13 @@ public class CapacitorZipPlugin: CAPPlugin, CAPBridgedPlugin {
 
         let password = call.getString("password")
         let includeParentFolder = call.getBool("includeParentFolder") ?? true
+        let operationId = call.getString("operationId") ?? ""
+
+        let progressMetadata = CapacitorZipProgressMetadata(
+            operationId: operationId,
+            source: source,
+            destination: destination
+        )
 
         do {
             try implementation.zip(
@@ -38,6 +45,7 @@ public class CapacitorZipPlugin: CAPPlugin, CAPBridgedPlugin {
                 destination: destination,
                 password: password,
                 includeParentFolder: includeParentFolder,
+                progressMetadata: progressMetadata,
                 progress: { [weak self] payload in
                     self?.notifyListeners("progress", data: payload)
                 }
@@ -60,12 +68,20 @@ public class CapacitorZipPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         let password = call.getString("password")
+        let operationId = call.getString("operationId") ?? ""
+
+        let progressMetadata = CapacitorZipProgressMetadata(
+            operationId: operationId,
+            source: source,
+            destination: destination
+        )
 
         do {
             try implementation.unzip(
                 source: source,
                 destination: destination,
                 password: password,
+                progressMetadata: progressMetadata,
                 progress: { [weak self] payload in
                     self?.notifyListeners("progress", data: payload)
                 }

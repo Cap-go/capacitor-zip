@@ -45,11 +45,16 @@ public class CapacitorZipPluginTest {
         File destDir = tempFolder.newFolder("dest");
 
         CapacitorZipPlugin plugin = new CapacitorZipPlugin();
-        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithoutPassword", File.class, File.class);
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod(
+            "unzipWithoutPassword",
+            File.class,
+            File.class,
+            CapacitorZipProgress.EventContext.class
+        );
         unzip.setAccessible(true);
 
         try {
-            unzip.invoke(plugin, fakeZip, destDir);
+            unzip.invoke(plugin, fakeZip, destDir, new CapacitorZipProgress.EventContext("test", fakeZip.getPath(), destDir.getPath()));
             fail("Expected IOException for corrupt zip");
         } catch (Exception e) {
             assertTrue(e.getCause() instanceof IOException);
@@ -64,11 +69,23 @@ public class CapacitorZipPluginTest {
         File destDir = tempFolder.newFolder("dest");
 
         CapacitorZipPlugin plugin = new CapacitorZipPlugin();
-        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithPassword", File.class, File.class, String.class);
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod(
+            "unzipWithPassword",
+            File.class,
+            File.class,
+            String.class,
+            CapacitorZipProgress.EventContext.class
+        );
         unzip.setAccessible(true);
 
         try {
-            unzip.invoke(plugin, fakeZip, destDir, "password");
+            unzip.invoke(
+                plugin,
+                fakeZip,
+                destDir,
+                "password",
+                new CapacitorZipProgress.EventContext("test", fakeZip.getPath(), destDir.getPath())
+            );
             fail("Expected IOException for corrupt zip");
         } catch (Exception e) {
             assertTrue(e.getCause() instanceof IOException);
@@ -84,9 +101,14 @@ public class CapacitorZipPluginTest {
         File resolvedSource = new File(CapacitorZipPath.resolveFilesystemPath(fileUrl));
 
         CapacitorZipPlugin plugin = new CapacitorZipPlugin();
-        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithoutPassword", File.class, File.class);
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod(
+            "unzipWithoutPassword",
+            File.class,
+            File.class,
+            CapacitorZipProgress.EventContext.class
+        );
         unzip.setAccessible(true);
-        unzip.invoke(plugin, resolvedSource, destDir);
+        unzip.invoke(plugin, resolvedSource, destDir, new CapacitorZipProgress.EventContext("test", fileUrl, destDir.getPath()));
 
         File extracted = new File(destDir, "hello.txt");
         assertTrue(extracted.exists());
@@ -110,11 +132,23 @@ public class CapacitorZipPluginTest {
         File destZip = new File(tempFolder.getRoot(), "out.zip");
 
         CapacitorZipPlugin plugin = new CapacitorZipPlugin();
-        Method zip = CapacitorZipPlugin.class.getDeclaredMethod("zipWithoutPassword", File.class, File.class, boolean.class);
+        Method zip = CapacitorZipPlugin.class.getDeclaredMethod(
+            "zipWithoutPassword",
+            File.class,
+            File.class,
+            boolean.class,
+            CapacitorZipProgress.EventContext.class
+        );
         zip.setAccessible(true);
 
         try {
-            zip.invoke(plugin, sourceDir, destZip, false);
+            zip.invoke(
+                plugin,
+                sourceDir,
+                destZip,
+                false,
+                new CapacitorZipProgress.EventContext("test", sourceDir.getPath(), destZip.getPath())
+            );
             fail("Expected IOException when directory listing fails");
         } catch (Exception e) {
             assertTrue(e.getCause() instanceof IOException);
@@ -128,9 +162,14 @@ public class CapacitorZipPluginTest {
         File destDir = tempFolder.newFolder("dest");
 
         CapacitorZipPlugin plugin = new CapacitorZipPlugin();
-        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod("unzipWithoutPassword", File.class, File.class);
+        Method unzip = CapacitorZipPlugin.class.getDeclaredMethod(
+            "unzipWithoutPassword",
+            File.class,
+            File.class,
+            CapacitorZipProgress.EventContext.class
+        );
         unzip.setAccessible(true);
-        unzip.invoke(plugin, zipFile, destDir);
+        unzip.invoke(plugin, zipFile, destDir, new CapacitorZipProgress.EventContext("test", zipFile.getPath(), destDir.getPath()));
 
         File extracted = new File(destDir, "hello.txt");
         assertTrue(extracted.exists());

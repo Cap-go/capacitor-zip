@@ -1,5 +1,6 @@
 package ee.forgr.plugin.capacitor_zip;
 
+import com.getcapacitor.JSObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.Enumeration;
@@ -17,7 +18,57 @@ public final class CapacitorZipProgress {
         public int filesTotal;
     }
 
+    public static final class EventContext {
+
+        public final String operationId;
+        public final String source;
+        public final String destination;
+
+        public EventContext(String operationId, String source, String destination) {
+            this.operationId = operationId != null ? operationId : "";
+            this.source = source != null ? source : "";
+            this.destination = destination != null ? destination : "";
+        }
+    }
+
     private CapacitorZipProgress() {}
+
+    public static JSObject buildProgressEvent(
+        EventContext context,
+        String operation,
+        long loaded,
+        long total,
+        String currentFile,
+        Integer filesCompleted,
+        Integer filesTotal,
+        boolean operationComplete
+    ) {
+        int filesDone = filesCompleted != null ? filesCompleted : 0;
+        int filesMax = filesTotal != null ? filesTotal : 0;
+        double progress = computeProgress(loaded, total, filesDone, filesMax, operationComplete);
+
+        JSObject data = new JSObject();
+        data.put("operationId", context.operationId);
+        data.put("source", context.source);
+        data.put("destination", context.destination);
+        data.put("operation", operation);
+        data.put("loaded", loaded);
+        data.put("total", total);
+        data.put("progress", progress);
+        data.put("lengthComputable", total > 0 || filesMax > 0);
+
+        if (currentFile != null && !currentFile.isEmpty()) {
+            data.put("currentFile", currentFile);
+        }
+        if (filesCompleted != null) {
+            data.put("filesCompleted", filesCompleted);
+        }
+        if (filesTotal != null) {
+            data.put("filesTotal", filesTotal);
+        }
+
+        return data;
+    }
 
     /**
      * Progress ratio from 0 to 1. When the operation has finished and there is no byte or file total, returns 1.

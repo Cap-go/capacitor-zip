@@ -25,6 +25,8 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
 
   async unzip(options: UnzipOptions): Promise<void> {
     let zipReader: ZipReader<unknown> | undefined;
+    const operationId = options.operationId ?? '';
+    const { source, destination } = options;
 
     try {
       let entries: Entry[];
@@ -71,6 +73,9 @@ export class CapacitorZipWeb extends WebPlugin implements CapacitorZipPlugin {
         throttle.recordEmit(progress);
 
         const event: ZipProgressEvent = {
+          operationId,
+          source,
+          destination,
           operation: 'unzip',
           loaded: loadedBytes,
           total: totalBytes,

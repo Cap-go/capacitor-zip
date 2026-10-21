@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.getcapacitor.JSObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -44,6 +45,16 @@ public class CapacitorZipProgressTest {
         assertFalse(throttle.shouldEmit(0.1001, false));
         assertTrue(throttle.shouldEmit(0.5, false));
         assertTrue(throttle.shouldEmit(0.1, true));
+    }
+
+    @Test
+    public void buildProgressEvent_includesOperationMetadata() {
+        CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext("op-1", "/src", "/dest.zip");
+        JSObject data = CapacitorZipProgress.buildProgressEvent(context, "zip", 1, 10, "file.txt", 1, 5, false);
+        assertEquals("op-1", data.getString("operationId"));
+        assertEquals("/src", data.getString("source"));
+        assertEquals("/dest.zip", data.getString("destination"));
+        assertEquals("zip", data.getString("operation"));
     }
 
     @Test

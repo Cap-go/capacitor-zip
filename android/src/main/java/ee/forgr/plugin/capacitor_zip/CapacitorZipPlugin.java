@@ -60,10 +60,11 @@ public class CapacitorZipPlugin extends Plugin {
                 parentDir.mkdirs();
             }
 
+            CapacitorZipProgress.EventContext progressContext = createProgressContext(call);
             if (password != null && !password.isEmpty()) {
-                zipWithPassword(sourceFile, destinationFile, password, includeParentFolder);
+                zipWithPassword(sourceFile, destinationFile, password, includeParentFolder, progressContext);
             } else {
-                zipWithoutPassword(sourceFile, destinationFile, includeParentFolder);
+                zipWithoutPassword(sourceFile, destinationFile, includeParentFolder, progressContext);
             }
 
             call.resolve();
@@ -102,10 +103,11 @@ public class CapacitorZipPlugin extends Plugin {
                 destinationDir.mkdirs();
             }
 
+            CapacitorZipProgress.EventContext progressContext = createProgressContext(call);
             if (password != null && !password.isEmpty()) {
-                unzipWithPassword(sourceFile, destinationDir, password);
+                unzipWithPassword(sourceFile, destinationDir, password, progressContext);
             } else {
-                unzipWithoutPassword(sourceFile, destinationDir);
+                unzipWithoutPassword(sourceFile, destinationDir, progressContext);
             }
 
             call.resolve();
@@ -125,7 +127,15 @@ public class CapacitorZipPlugin extends Plugin {
         }
     }
 
+    private CapacitorZipProgress.EventContext createProgressContext(PluginCall call) {
+        String operationId = call.getString("operationId");
+        String source = call.getString("source");
+        String destination = call.getString("destination");
+        return new CapacitorZipProgress.EventContext(operationId, source, destination);
+    }
+
     private void emitProgress(
+        CapacitorZipProgress.EventContext context,
         String operation,
         long loaded,
         long total,
@@ -134,39 +144,29 @@ public class CapacitorZipPlugin extends Plugin {
         Integer filesTotal,
         boolean operationComplete
     ) {
-        int filesDone = filesCompleted != null ? filesCompleted : 0;
-        int filesMax = filesTotal != null ? filesTotal : 0;
-        double progress = CapacitorZipProgress.computeProgress(loaded, total, filesDone, filesMax, operationComplete);
-
-        JSObject data = new JSObject();
-        data.put("operation", operation);
-        data.put("loaded", loaded);
-        data.put("total", total);
-        data.put("progress", progress);
-        data.put("lengthComputable", total > 0 || filesMax > 0);
-
-        if (currentFile != null && !currentFile.isEmpty()) {
-            data.put("currentFile", currentFile);
-        }
-        if (filesCompleted != null) {
-            data.put("filesCompleted", filesCompleted);
-        }
-        if (filesTotal != null) {
-            data.put("filesTotal", filesTotal);
-        }
-
         if (getBridge() == null) {
             return;
         }
+        JSObject data = CapacitorZipProgress.buildProgressEvent(
+            context,
+            operation,
+            loaded,
+            total,
+            currentFile,
+            filesCompleted,
+            filesTotal,
+            operationComplete
+        );
         notifyListeners("progress", data);
     }
 
-    private void runZip4jWithProgress(String operation, ZipFile zipFile, Zip4jWork work) throws Exception {
+    private void runZip4jWithProgress(CapacitorZipProgress.EventContext context, String operation, ZipFile zipFile, Zip4jWork work)
+        throws Exception {
         zipFile.setRunInThread(true);
         work.run();
         ProgressMonitor monitor = zipFile.getProgressMonitor();
         while (monitor.getState() == ProgressMonitor.State.BUSY) {
-            emitFromZip4jMonitor(operation, monitor, false);
+            emitFromZip4jMonitor(context, operation, monitor, false);
             try {
                 Thread.sleep(16);
             } catch (InterruptedException e) {
@@ -175,7 +175,7 @@ public class CapacitorZipPlugin extends Plugin {
                 throw e;
             }
         }
-        emitFromZip4jMonitor(operation, monitor, true);
+        emitFromZip4jMonitor(context, operation, monitor, true);
         if (monitor.getResult() == ProgressMonitor.Result.ERROR) {
             Exception cause = monitor.getException();
             if (cause instanceof Exception) {
@@ -185,18 +185,29 @@ public class CapacitorZipPlugin extends Plugin {
         }
     }
 
-    private void emitFromZip4jMonitor(String operation, ProgressMonitor monitor, boolean operationComplete) {
+    private void emitFromZip4jMonitor(
+        CapacitorZipProgress.EventContext context,
+        String operation,
+        ProgressMonitor monitor,
+        boolean operationComplete
+    ) {
         long total = monitor.getTotalWork();
         long loaded = monitor.getWorkCompleted();
         String fileName = monitor.getFileName();
-        emitProgress(operation, loaded, total, fileName, null, null, operationComplete);
+        emitProgress(context, operation, loaded, total, fileName, null, null, operationComplete);
     }
 
     private interface Zip4jWork {
         void run() throws Exception;
     }
 
-    private void zipWithPassword(File source, File destination, String password, boolean includeParentFolder) throws Exception {
+    private void zipWithPassword(
+        File source,
+        File destination,
+        String password,
+        boolean includeParentFolder,
+        CapacitorZipProgress.EventContext progressContext
+    ) throws Exception {
         ZipFile zipFile = new ZipFile(destination);
 
         ZipParameters zipParameters = new ZipParameters();
@@ -208,13 +219,13 @@ public class CapacitorZipPlugin extends Plugin {
 
         if (source.isDirectory()) {
             if (includeParentFolder) {
-                runZip4jWithProgress("zip", zipFile, () -> zipFile.addFolder(source, zipParameters));
+                runZip4jWithProgress(progressContext, "zip", zipFile, () -> zipFile.addFolder(source, zipParameters));
             } else {
                 File[] files = listDirectoryEntries(source);
                 if (files.length > 0) {
                     Arrays.sort(files);
                     for (File file : files) {
-                        runZip4jWithProgress("zip", zipFile, () -> {
+                        runZip4jWithProgress(progressContext, "zip", zipFile, () -> {
                             if (file.isDirectory()) {
                                 zipFile.addFolder(file, zipParameters);
                             } else {
@@ -223,17 +234,22 @@ public class CapacitorZipPlugin extends Plugin {
                         });
                     }
                 } else {
-                    emitProgress("zip", 0, 0, null, null, null, true);
+                    emitProgress(progressContext, "zip", 0, 0, null, null, null, true);
                 }
             }
         } else {
-            runZip4jWithProgress("zip", zipFile, () -> zipFile.addFile(source, zipParameters));
+            runZip4jWithProgress(progressContext, "zip", zipFile, () -> zipFile.addFile(source, zipParameters));
         }
     }
 
-    private void zipWithoutPassword(File source, File destination, boolean includeParentFolder) throws IOException {
+    private void zipWithoutPassword(
+        File source,
+        File destination,
+        boolean includeParentFolder,
+        CapacitorZipProgress.EventContext progressContext
+    ) throws IOException {
         CapacitorZipProgress.Stats stats = CapacitorZipProgress.computeSourceStats(source, includeParentFolder);
-        ProgressTracker tracker = new ProgressTracker("zip", stats);
+        ProgressTracker tracker = new ProgressTracker(progressContext, "zip", stats);
 
         try (
             FileOutputStream fos = new FileOutputStream(destination);
@@ -309,16 +325,17 @@ public class CapacitorZipPlugin extends Plugin {
         }
     }
 
-    private void unzipWithPassword(File source, File destination, String password) throws Exception {
+    private void unzipWithPassword(File source, File destination, String password, CapacitorZipProgress.EventContext progressContext)
+        throws Exception {
         validateZipArchive(source);
         ZipFile zipFile = new ZipFile(source);
         if (zipFile.isEncrypted()) {
             zipFile.setPassword(password.toCharArray());
         }
-        runZip4jWithProgress("unzip", zipFile, () -> zipFile.extractAll(destination.getAbsolutePath()));
+        runZip4jWithProgress(progressContext, "unzip", zipFile, () -> zipFile.extractAll(destination.getAbsolutePath()));
     }
 
-    private void unzipWithoutPassword(File source, File destination) throws IOException {
+    private void unzipWithoutPassword(File source, File destination, CapacitorZipProgress.EventContext progressContext) throws IOException {
         try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(source)) {
             CapacitorZipProgress.Stats stats = new CapacitorZipProgress.Stats();
             List<ZipEntry> entryList = new ArrayList<>();
@@ -333,7 +350,7 @@ public class CapacitorZipPlugin extends Plugin {
                 }
             }
 
-            ProgressTracker tracker = new ProgressTracker("unzip", stats);
+            ProgressTracker tracker = new ProgressTracker(progressContext, "unzip", stats);
             byte[] buffer = new byte[CapacitorZipIO.BUFFER_BYTES];
 
             for (ZipEntry entry : entryList) {
@@ -381,6 +398,7 @@ public class CapacitorZipPlugin extends Plugin {
 
     private final class ProgressTracker {
 
+        private final CapacitorZipProgress.EventContext eventContext;
         private final String operation;
         private final CapacitorZipProgress.Stats stats;
         private final CapacitorZipProgressThrottle throttle = new CapacitorZipProgressThrottle();
@@ -388,7 +406,8 @@ public class CapacitorZipPlugin extends Plugin {
         private int filesCompleted;
         private String currentFile;
 
-        ProgressTracker(String operation, CapacitorZipProgress.Stats stats) {
+        ProgressTracker(CapacitorZipProgress.EventContext eventContext, String operation, CapacitorZipProgress.Stats stats) {
+            this.eventContext = eventContext;
             this.operation = operation;
             this.stats = stats;
         }
@@ -424,7 +443,7 @@ public class CapacitorZipPlugin extends Plugin {
                 return;
             }
             throttle.recordEmit(progress);
-            emitProgress(operation, loaded, stats.totalBytes, currentFile, filesCompleted, stats.filesTotal, force);
+            emitProgress(eventContext, operation, loaded, stats.totalBytes, currentFile, filesCompleted, stats.filesTotal, force);
         }
     }
 }
