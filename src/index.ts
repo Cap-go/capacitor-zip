@@ -7,13 +7,17 @@ const CapacitorZipNative = registerPlugin<CapacitorZipPlugin>('CapacitorZip', {
   web: () => import('./web').then((m) => new m.CapacitorZipWeb()),
 });
 
-const CapacitorZip: CapacitorZipPlugin = {
-  addListener: (...args) => CapacitorZipNative.addListener(...args),
-  getPluginVersion: () => CapacitorZipNative.getPluginVersion(),
-  zip: (options: ZipOptions) => runZipOrUnzip(CapacitorZipNative, 'zip', options),
-  unzip: (options: UnzipOptions) => runZipOrUnzip(CapacitorZipNative, 'unzip', options),
-};
+const CapacitorZip = new Proxy(CapacitorZipNative, {
+  get(target, prop, receiver) {
+    if (prop === 'zip') {
+      return (options: ZipOptions) => runZipOrUnzip(CapacitorZipNative, 'zip', options);
+    }
+    if (prop === 'unzip') {
+      return (options: UnzipOptions) => runZipOrUnzip(CapacitorZipNative, 'unzip', options);
+    }
+    return Reflect.get(target, prop, receiver);
+  },
+}) as CapacitorZipPlugin;
 
 export * from './definitions';
 export { CapacitorZip };
-export { createZipOperationId, runZipOrUnzip } from './zip-operation';

@@ -33,6 +33,16 @@ const baseEvent = {
   lengthComputable: true,
 };
 
+const unzipBaseEvent = {
+  source: '/archive.zip',
+  destination: '/out',
+  operation: 'unzip',
+  loaded: 1,
+  total: 2,
+  progress: 0.5,
+  lengthComputable: true,
+};
+
 await (async () => {
   const plugin = createMockPlugin({
     zip: async (options) => {
@@ -48,7 +58,14 @@ await (async () => {
         progress: 1,
       });
     },
-    unzip: async () => {},
+    unzip: async (options) => {
+      plugin.emit({
+        ...unzipBaseEvent,
+        operationId: options.operationId,
+        source: options.source,
+        destination: options.destination,
+      });
+    },
   });
 
   const opAEvents = [];
@@ -72,6 +89,58 @@ await (async () => {
   assert.deepEqual(opAEvents, ['op-a', 'op-a']);
   assert.deepEqual(opBEvents, ['op-b', 'op-b']);
   assert.equal(plugin.listeners.size, 0);
+
+  const unzipEvents = [];
+  await runZipOrUnzip(plugin, 'unzip', {
+    source: '/archive.zip',
+    destination: '/extracted',
+    operationId: 'unzip-op',
+    onProgress: (event) => unzipEvents.push(event.operationId),
+  });
+  assert.deepEqual(unzipEvents, ['unzip-op']);
+  assert.equal(plugin.listeners.size, 0);
+})();
+
+await (async () => {
+  const plugin = createMockPlugin({
+    zip: async (options) => {
+      plugin.emit({
+        ...baseEvent,
+        operationId: options.operationId,
+        source: options.source,
+        destination: options.destination,
+      });
+    },
+    unzip: async () => {},
+  });
+
+  const seenIds = new Set();
+  const opAIds = [];
+  const opBIds = [];
+
+  await Promise.all([
+    runZipOrUnzip(plugin, 'zip', {
+      source: '/src-a',
+      destination: '/dest-a.zip',
+      onProgress: (event) => {
+        opAIds.push(event.operationId);
+        seenIds.add(event.operationId);
+      },
+    }),
+    runZipOrUnzip(plugin, 'zip', {
+      source: '/src-b',
+      destination: '/dest-b.zip',
+      onProgress: (event) => {
+        opBIds.push(event.operationId);
+        seenIds.add(event.operationId);
+      },
+    }),
+  ]);
+
+  assert.equal(opAIds.length, 1);
+  assert.equal(opBIds.length, 1);
+  assert.equal(seenIds.size, 2);
+  assert.notEqual(opAIds[0], opBIds[0]);
 })();
 
 await (async () => {
@@ -86,7 +155,13 @@ await (async () => {
   const originalAdd = plugin.addListener.bind(plugin);
   plugin.addListener = async (...args) => {
     listenerCount += 1;
-    return originalAdd(...args);
+    const handle = await originalAdd(...args);
+    return {
+      remove: async () => {
+        await handle.remove();
+        throw new Error('remove failed');
+      },
+    };
   };
 
   await assert.rejects(

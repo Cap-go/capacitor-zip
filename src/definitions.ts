@@ -13,19 +13,19 @@ export interface ZipProgressEvent {
    *
    * @since 8.3.0
    */
-  operationId: string;
+  operationId?: string;
   /**
    * `source` path from the `zip` or `unzip` options for this operation.
    *
    * @since 8.3.0
    */
-  source: string;
+  source?: string;
   /**
    * `destination` path from the `zip` or `unzip` options for this operation.
    *
    * @since 8.3.0
    */
-  destination: string;
+  destination?: string;
   /**
    * Whether bytes are being compressed or extracted.
    */
@@ -82,6 +82,7 @@ export interface CapacitorZipPlugin {
    *
    * Register before starting the operation. Events are best-effort on web (unzip only).
    * Each event includes `operationId`, `source`, and `destination` so you can filter when several operations run at once.
+   * Pass a unique `operationId` per call if you supply your own.
    *
    * @param eventName The event name (`progress`).
    * @param listenerFunc Called with `ZipProgressEvent` payloads (includes `loaded`, `total`, and `lengthComputable` like `ProgressEvent`).
@@ -299,7 +300,8 @@ export interface ZipOptions {
   onProgress?: (event: ZipProgressEvent) => void;
 
   /**
-   * Optional operation id (generated automatically when omitted).
+   * Optional operation id. If supplied, it must be unique among concurrent `zip` and `unzip` calls.
+   * An id is generated automatically when omitted.
    *
    * @since 8.3.0
    */
@@ -375,6 +377,7 @@ export interface UnzipOptions {
   /**
    * Called with progress updates for this unzip operation only.
    *
+   * Events are best-effort on web (unzip only).
    * Prefer this over `addListener('progress')` when running multiple operations at once.
    * The listener is registered and removed automatically.
    *
@@ -383,7 +386,8 @@ export interface UnzipOptions {
   onProgress?: (event: ZipProgressEvent) => void;
 
   /**
-   * Optional operation id (generated automatically when omitted).
+   * Optional operation id. If supplied, it must be unique among concurrent `zip` and `unzip` calls.
+   * An id is generated automatically when omitted.
    *
    * @since 8.3.0
    */

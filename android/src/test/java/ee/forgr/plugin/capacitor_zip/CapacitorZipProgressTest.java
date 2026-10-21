@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.getcapacitor.JSObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -52,6 +53,17 @@ public class CapacitorZipProgressTest {
         assertEquals("op-1", context.operationId);
         assertEquals("/src", context.source);
         assertEquals("/dest.zip", context.destination);
+    }
+
+    @Test
+    public void buildProgressEvent_includesOperationMetadata() {
+        CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext("op-42", "/in", "/out.zip");
+        JSObject data = CapacitorZipProgress.buildProgressEvent(context, "zip", 10, 100, null, null, null, false);
+
+        assertEquals("op-42", data.getString("operationId"));
+        assertEquals("/in", data.getString("source"));
+        assertEquals("/out.zip", data.getString("destination"));
+        assertEquals("zip", data.getString("operation"));
     }
 
     @Test

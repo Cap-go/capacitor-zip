@@ -51,6 +51,6 @@ export async function runZipOrUnzip(
       await plugin.unzip(nativeOptions as UnzipNativeCallOptions);
     }
   } finally {
-    await listenerHandle?.remove();
+    await listenerHandle?.remove().catch(() => undefined);
   }
 }

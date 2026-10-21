@@ -14,6 +14,28 @@ public class CapacitorZip: NSObject {
         destination: String,
         password: String? = nil,
         includeParentFolder: Bool = true,
+        progress: CapacitorZipProgressHandler? = nil
+    ) throws {
+        let progressMetadata = CapacitorZipProgressMetadata(
+            operationId: "",
+            source: source,
+            destination: destination
+        )
+        try self.zip(
+            source: source,
+            destination: destination,
+            password: password,
+            includeParentFolder: includeParentFolder,
+            progressMetadata: progressMetadata,
+            progress: progress
+        )
+    }
+
+    public func zip(
+        source: String,
+        destination: String,
+        password: String? = nil,
+        includeParentFolder: Bool = true,
         progressMetadata: CapacitorZipProgressMetadata,
         progress: CapacitorZipProgressHandler? = nil
     ) throws {
@@ -133,6 +155,26 @@ public class CapacitorZip: NSObject {
             )
             tracker.completeFile()
         }
+    }
+
+    public func unzip(
+        source: String,
+        destination: String,
+        password: String? = nil,
+        progress: CapacitorZipProgressHandler? = nil
+    ) throws {
+        let progressMetadata = CapacitorZipProgressMetadata(
+            operationId: "",
+            source: source,
+            destination: destination
+        )
+        try self.unzip(
+            source: source,
+            destination: destination,
+            password: password,
+            progressMetadata: progressMetadata,
+            progress: progress
+        )
     }
 
     public func unzip(
