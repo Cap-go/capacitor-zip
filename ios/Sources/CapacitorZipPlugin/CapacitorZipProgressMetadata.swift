@@ -1,7 +1,13 @@
 import Foundation
 
-struct CapacitorZipProgressMetadata {
-    let operationId: String
-    let source: String
-    let destination: String
+public struct CapacitorZipProgressMetadata {
+    public let operationId: String
+    public let source: String
+    public let destination: String
+
+    public init(operationId: String, source: String, destination: String) {
+        self.operationId = operationId
+        self.source = source
+        self.destination = destination
+    }
 }

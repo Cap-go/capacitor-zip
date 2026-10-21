@@ -51,10 +51,10 @@ public class CapacitorZipProgressTest {
     public void buildProgressEvent_includesOperationMetadata() {
         CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext("op-1", "/src", "/dest.zip");
         JSObject data = CapacitorZipProgress.buildProgressEvent(context, "zip", 1, 10, "file.txt", 1, 5, false);
-        assertEquals("op-1", data.getString("operationId"));
-        assertEquals("/src", data.getString("source"));
-        assertEquals("/dest.zip", data.getString("destination"));
-        assertEquals("zip", data.getString("operation"));
+        assertEquals("op-1", data.get("operationId"));
+        assertEquals("/src", data.get("source"));
+        assertEquals("/dest.zip", data.get("destination"));
+        assertEquals("zip", data.get("operation"));
     }
 
     @Test
