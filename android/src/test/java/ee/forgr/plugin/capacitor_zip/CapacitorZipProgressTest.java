@@ -6,6 +6,8 @@ import static org.junit.Assert.assertTrue;
 
 import com.getcapacitor.JSObject;
 import java.io.File;
+import org.json.JSONException;
+import org.json.JSONObject;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -56,14 +58,15 @@ public class CapacitorZipProgressTest {
     }
 
     @Test
-    public void buildProgressEvent_includesOperationMetadata() {
+    public void buildProgressEvent_includesOperationMetadata() throws JSONException {
         CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext("op-42", "/in", "/out.zip");
         JSObject data = CapacitorZipProgress.buildProgressEvent(context, "zip", 10, 100, null, null, null, false);
+        JSONObject payload = new JSONObject(data.toString());
 
-        assertEquals("op-42", data.getString("operationId"));
-        assertEquals("/in", data.getString("source"));
-        assertEquals("/out.zip", data.getString("destination"));
-        assertEquals("zip", data.getString("operation"));
+        assertEquals("op-42", payload.getString("operationId"));
+        assertEquals("/in", payload.getString("source"));
+        assertEquals("/out.zip", payload.getString("destination"));
+        assertEquals("zip", payload.getString("operation"));
     }
 
     @Test
