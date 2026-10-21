@@ -182,7 +182,7 @@ await (async () => {
 await (async () => {
   const native = createMockPlugin({
     zip: async (options) => {
-      plugin.emit({
+      native.emit({
         ...baseEvent,
         operationId: options.operationId,
         source: options.source,
@@ -191,12 +191,12 @@ await (async () => {
     },
     unzip: async () => {},
   });
-  const plugin = native;
-  native.getPluginVersion = () => '8.2.1';
+  native.getPluginVersion = async () => ({ version: '8.2.1' });
   native.removeAllListeners = () => Promise.resolve();
 
   const CapacitorZip = wrapCapacitorZipPlugin(native);
-  assert.equal(CapacitorZip.getPluginVersion(), '8.2.1');
+  const { version } = await CapacitorZip.getPluginVersion();
+  assert.equal(version, '8.2.1');
 
   const events = [];
   await CapacitorZip.zip({
@@ -207,7 +207,7 @@ await (async () => {
   });
 
   assert.deepEqual(events, ['entry-op']);
-  assert.equal(plugin.listeners.size, 0);
+  assert.equal(native.listeners.size, 0);
 })();
 
 console.log('progress-concurrent.test.mjs: ok');
