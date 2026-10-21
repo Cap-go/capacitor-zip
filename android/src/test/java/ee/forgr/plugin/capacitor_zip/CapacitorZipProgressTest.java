@@ -48,7 +48,7 @@ public class CapacitorZipProgressTest {
     }
 
     @Test
-    public void buildProgressEvent_includesOperationMetadata() {
+    public void buildProgressEvent_includesOperationMetadata() throws Exception {
         CapacitorZipProgress.EventContext context = new CapacitorZipProgress.EventContext("op-1", "/src", "/dest.zip");
         JSObject data = CapacitorZipProgress.buildProgressEvent(context, "zip", 1, 10, "file.txt", 1, 5, false);
         assertEquals("op-1", data.get("operationId"));
