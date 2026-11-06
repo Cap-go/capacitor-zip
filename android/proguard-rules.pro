@@ -5,5 +5,4 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Keep plugin classes
--keep class ee.forgr.plugin.capacitor_zip.** { *; }
+# App facing keep rules live in consumer-rules.pro (wired via consumerProguardFiles).

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">@capgo/capacitor-zip</string>
+    <string name="title_activity_main">@capgo/capacitor-zip</string>
+    <string name="package_name">app.capgo.zip</string>
+    <string name="custom_url_scheme">app.capgo.zip</string>
+</resources>
